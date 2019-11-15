@@ -14,4 +14,4 @@ def load_csv_info(fname="prueba.csv"):
 
 star_rating_list, review_body_list = load_csv_info(fname="prueba.csv")
 print(star_rating_list)
-print("soy tania")
+print("soy tania2")
