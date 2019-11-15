@@ -3,7 +3,7 @@ column_separator = "\t"
 star_rating_list = []
 review_body_list= []
 
-def load_csv_info(fname="prueba2.txt"):
+def load_csv_info(fname="prueba.csv"):
     file=open(fname)
     file.readline()
     for line in file.readlines():
@@ -12,5 +12,6 @@ def load_csv_info(fname="prueba2.txt"):
         review_body_list.append(review_body)
     return  star_rating_list, review_body_list
 
-star_rating_list, review_body_list = load_csv_info(fname="prueba2.txt")
+star_rating_list, review_body_list = load_csv_info(fname="prueba.csv")
 print(star_rating_list)
+print("soy mar")
