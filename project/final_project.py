@@ -13,3 +13,4 @@ def load_csv_info(fname="prueba2.txt"):
     return  star_rating_list, review_body_list
 
 star_rating_list, review_body_list = load_csv_info(fname="prueba2.txt")
+print(star_rating_list)
