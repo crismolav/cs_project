@@ -59,8 +59,6 @@ def frequency(text):
 freq=frequency(no_sw)
 
 
-
-
     
     
     
