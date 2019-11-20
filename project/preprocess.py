@@ -1,26 +1,13 @@
-column_separator = "\t"
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Nov 15 09:43:45 2019
 
-star_rating_list = []
-review_body_list= []
-
-def load_csv_info(fname="archivo.txt"):
-    file=open(fname)
-    file.readline()
-    for line in file.readlines():
-        marketplace, customer_id, review_id, product_id, product_parent,	product_title, product_category, star_rating, helpful_votes, total_votes, vine, verified_purchase, review_headline, review_body, review_date = line.strip().split(column_separator)
-        star_rating_list.append(star_rating)
-        review_body_list.append(review_body)
-    return  star_rating_list, review_body_list
-
-star_rating_list, review = load_csv_info(fname="archivo.txt")
-
-
-#%%
+@author: Mar Adrian
+"""
 
 import nltk
-import numpy as np
 # LOAD THE TEXT
-filename = 'archivo.txt'
+filename = 'review.txt'
 file = open(filename, 'rt')
 text = file.read()
 file.close()
@@ -67,19 +54,11 @@ no_sw=sw(text_lc)
 from nltk.probability import FreqDist
 def frequency(text):
     fdist=FreqDist(text)
-    most_common = fdist.most_common(100)
-    return fdist, most_common
+    return fdist
 
-freq, most_common = frequency(no_sw)
-print(most_common)
+freq=frequency(no_sw)
 
-with open('counts.txt', 'w') as f:
-    for word in freq.keys():
-        #print(word, freq[word])
-        f.write(str(word)+'\t'+str(freq[word])+'\n')
-        
-    
-    
-    
-    
 
+    
+    
+    
