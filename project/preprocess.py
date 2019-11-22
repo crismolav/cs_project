@@ -28,7 +28,7 @@ def text_lowercase(text):
 #WITHOUT SOPTWORDS
 def sw(text):
     stop_en = set(stopwords.words('english'))
-    new_stopwords = ["would", "could", "hes", "shes", "doesnt", "dont", "cant"]
+    new_stopwords = ["would", "could", "hes", "shes", "doesnt", "dont", "cant", "us", "im"]
     new_stopwords_list = stop_en.union(new_stopwords)
     no = [w for w in text if w not in new_stopwords_list]
     return no
