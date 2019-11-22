@@ -46,6 +46,7 @@ text_lc=text_lowercase(word_tokenize)
 #WITHOUT SOPTWORDS
 def sw(text):
     stop_en = stopwords.words('english')
+    stop_en.append("cant't", "us", "would")
     no = [w for w in text if w not in stop_en]
     return no 
 no_sw=sw(text_lc)
@@ -57,6 +58,9 @@ def frequency(text):
     return fdist
 
 freq=frequency(no_sw)
+
+### NUMBER INTO WORDS ### 
+
 
 
     
