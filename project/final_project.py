@@ -8,10 +8,10 @@ import string
 import re
 
 column_separator = "\t"
-star_rating_list = []
-review_body_list= []
 
 def load_csv_info(fname="archivo.txt"):
+    star_rating_list = []
+    review_body_list = []
     file=open(fname)
     file.readline()
     for line in file.readlines():
