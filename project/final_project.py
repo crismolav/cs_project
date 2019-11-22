@@ -6,6 +6,7 @@ from nltk.probability import FreqDist
 import re
 import string
 import re
+import preprocess as pp
 
 column_separator = "\t"
 
@@ -27,24 +28,24 @@ def load_text():
     file.close()
     return text
 
-def cleanhtml(raw_html):
-    cleanr = re.compile('<.*?>')
-    cleantext = re.sub(cleanr, ' ', raw_html)
-    return cleantext
-
-def remove_punctuation(text):
-    no_punct = "".join([c for c in text if c not in string.punctuation])
-    return no_punct
-
-def text_lowercase(text): 
-    l = [item.lower() for item in text]
-    return l 
-
-def sw(text):
-    stop_en = stopwords.words('english')
-    no = [w for w in text if w not in stop_en]
-    return no
-
+# def cleanhtml(raw_html):
+#     cleanr = re.compile('<.*?>')
+#     cleantext = re.sub(cleanr, ' ', raw_html)
+#     return cleantext
+#
+# def remove_punctuation(text):
+#     no_punct = "".join([c for c in text if c not in string.punctuation])
+#     return no_punct
+#
+# def text_lowercase(text):
+#     l = [item.lower() for item in text]
+#     return l
+#
+# def sw(text):
+#     stop_en = stopwords.words('english')
+#     no = [w for w in text if w not in stop_en]
+#     return no
+#
 def frequency(text):
     fdist=FreqDist(text)
     most_common = fdist.most_common(100)
@@ -55,15 +56,15 @@ if __name__=="__main__":
     # LOAD THE TEXT
     text = load_text()
     #### REMOVE HTML TAGS ###
-    no_html = cleanhtml(text)
+    no_html = pp.cleanhtml(text)
     ### PUNCTUATION ###
-    no_puntuation = remove_punctuation(no_html)
+    no_puntuation = pp.remove_punctuation(no_html)
     # TOKENIZE
-    word_tokenize = word_tokenize(no_puntuation)
+    word_tokenize = pp.word_tokenize(no_puntuation)
     # LOWERCASE
-    text_lc = text_lowercase(word_tokenize)
+    text_lc = pp.text_lowercase(word_tokenize)
     # WITHOUT SOPTWORDS
-    no_sw = sw(text_lc)
+    no_sw = pp.sw(text_lc)
     ### FREQUENCE OF THE WORD ###
     freq, most_common = frequency(no_sw)
     print(most_common)
