@@ -1,11 +1,6 @@
 import nltk
 import numpy as np
-from nltk import word_tokenize
-from nltk.corpus import stopwords
 from nltk.probability import FreqDist
-import re
-import string
-import re
 import preprocess as pp
 
 column_separator = "\t"
@@ -28,24 +23,6 @@ def load_text():
     file.close()
     return text
 
-# def cleanhtml(raw_html):
-#     cleanr = re.compile('<.*?>')
-#     cleantext = re.sub(cleanr, ' ', raw_html)
-#     return cleantext
-#
-# def remove_punctuation(text):
-#     no_punct = "".join([c for c in text if c not in string.punctuation])
-#     return no_punct
-#
-# def text_lowercase(text):
-#     l = [item.lower() for item in text]
-#     return l
-#
-# def sw(text):
-#     stop_en = stopwords.words('english')
-#     no = [w for w in text if w not in stop_en]
-#     return no
-#
 def frequency(text):
     fdist=FreqDist(text)
     most_common = fdist.most_common(100)
