@@ -55,18 +55,9 @@ if __name__=="__main__":
     star_rating_list, review = load_csv_info(fname="archivo.txt")
     # LOAD THE TEXT
     text = load_text()
-    #### REMOVE HTML TAGS ###
-    no_html = pp.cleanhtml(text)
-    ### PUNCTUATION ###
-    no_puntuation = pp.remove_punctuation(no_html)
-    # TOKENIZE
-    word_tokenize = pp.word_tokenize(no_puntuation)
-    # LOWERCASE
-    text_lc = pp.text_lowercase(word_tokenize)
-    # WITHOUT SOPTWORDS
-    no_sw = pp.sw(text_lc)
+    pre_processed = pp.pre_process(text)
     ### FREQUENCE OF THE WORD ###
-    freq, most_common = frequency(no_sw)
+    freq, most_common = frequency(pre_processed)
     print(most_common)
 
     with open('counts.txt', 'w') as f:

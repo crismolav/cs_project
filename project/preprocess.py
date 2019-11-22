@@ -49,3 +49,21 @@ def replace_numbers(words):
         else:
             new_words.append(word)
     return new_words
+
+
+def pre_process(text):
+    #### REMOVE HTML TAGS ###
+    no_html = cleanhtml(text)
+    ### PUNCTUATION ###
+    no_puntuation = remove_punctuation(no_html)
+    # TOKENIZE
+    wt = word_tokenize(no_puntuation)
+    # LOWERCASE
+    text_lc = text_lowercase(wt)
+    # WITHOUT SOPTWORDS
+    no_sw = sw(text_lc)
+    
+    no_numbers=replace_numbers(no_sw)
+    return no_numbers
+
+    
