@@ -45,11 +45,13 @@ text_lc=text_lowercase(word_tokenize)
 
 #WITHOUT SOPTWORDS
 def sw(text):
-    stop_en = stopwords.words('english')
-    stop_en.append("cant't", "us", "would")
-    no = [w for w in text if w not in stop_en]
+    stop_en = set(stopwords.words('english'))
+    new_stopwords = ["would", "could", "hes", "shes", "doesnt", "dont", "cant"]
+    new_stopwords_list = stop_en.union(new_stopwords)
+    no = [w for w in text if w not in new_stopwords_list]
     return no 
 no_sw=sw(text_lc)
+
 
 ### FREQUENCE OF THE WORD ### 
 from nltk.probability import FreqDist
@@ -61,8 +63,5 @@ freq=frequency(no_sw)
 
 ### NUMBER INTO WORDS ### 
 
-
-
-    
     
     
