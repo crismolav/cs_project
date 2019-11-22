@@ -13,7 +13,6 @@ verifiedpurchase	1
 reviewheadline	1
 reviewbody	1
 reviewdate	1
-us	137
 twenty-two million, four hundred and eighty thousand and fifty-three	1
 r28hbxxo1uevjt	1
 eight hundred and forty-three million, nine hundred and fifty-two thousand and sixteen	1
@@ -962,7 +961,6 @@ liquids	1
 kids	23
 knew	4
 foods	3
-im	15
 happy	6
 thirty-three million, two hundred and eighty-four thousand, one hundred and fifteen	1
 rnga47kd4ceb8	1
