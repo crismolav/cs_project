@@ -1,5 +1,12 @@
-column_separator = "\t"
+import nltk
+import numpy as np
+from nltk import word_tokenize
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+import re
+import string
 
+column_separator = "\t"
 star_rating_list = []
 review_body_list= []
 
@@ -17,8 +24,6 @@ star_rating_list, review = load_csv_info(fname="archivo.txt")
 
 #%%
 
-import nltk
-import numpy as np
 # LOAD THE TEXT
 filename = 'archivo.txt'
 file = open(filename, 'rt')
@@ -36,7 +41,7 @@ def cleanhtml(raw_html):
 no_html=cleanhtml(text)
 
 ### PUNCTUATION ### 
-import string
+
 def remove_punctuation(text):
     no_punct = "".join([c for c in text if c not in string.punctuation])
     return no_punct
@@ -44,8 +49,7 @@ def remove_punctuation(text):
 no_puntuation=remove_punctuation(no_html)
 
 ### WITHOUT STOPWORDS ### 
-from nltk import word_tokenize
-from nltk.corpus import stopwords
+
 
 #TOKENIZE
 word_tokenize=word_tokenize(no_puntuation)
@@ -64,7 +68,7 @@ def sw(text):
 no_sw=sw(text_lc)
 
 ### FREQUENCE OF THE WORD ### 
-from nltk.probability import FreqDist
+
 def frequency(text):
     fdist=FreqDist(text)
     most_common = fdist.most_common(100)
