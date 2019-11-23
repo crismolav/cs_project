@@ -5,7 +5,7 @@ import preprocess as pp
 
 column_separator = "\t"
 
-def load_csv_info(fname="archivo.txt"):
+def load_csv_info(fname):
     star_rating_list = []
     review_body_list = []
     file=open(fname)
@@ -16,8 +16,7 @@ def load_csv_info(fname="archivo.txt"):
         review_body_list.append(review_body)
     return  star_rating_list, review_body_list
 
-def load_text():
-    filename = 'archivo.txt'
+def load_text(filename):
     file = open(filename, 'rt')
     text = file.read()
     file.close()
@@ -28,19 +27,55 @@ def frequency(text):
     most_common = fdist.most_common(100)
     return fdist, most_common
 
+def split_reviews(star_rating_list, review):
+    reviews_45 = []
+    reviews_12 = []
+    with open('reviews45.txt', 'w') as f45:
+        with open('reviews12.txt', 'w') as f12:
+            for ii, star in enumerate(star_rating_list):
+                current_review = review[ii]
+                if star == '4' or star == '5':
+                    reviews_45.append(current_review)
+                    f45.write(current_review + '\n')
+                elif star == '1' or star == '2':
+                    reviews_12.append(current_review)
+                    f12.write(current_review + '\n')
+    return reviews_12, reviews_45
+
 if __name__=="__main__":
-    star_rating_list, review = load_csv_info(fname="archivo.txt")
+    #LOAD THE REVIEWS AND THE CORREPONDING RATING
+    star_rating_list, review = load_csv_info("10000reviews.txt")
+    #SPLIT THE REVIEWS INTO POSITIVE (RATING 4,5) AND NEGATIVE (RATING 1,2)
+    reviews_12, reviews_45 = split_reviews(star_rating_list, review)
+    
+    ######## NEGATIVE REVIEWS ######## 
     # LOAD THE TEXT
-    text = load_text()
+    text = load_text('reviews12.txt')
+    # PRE-PROCESS
     pre_processed = pp.pre_process(text)
     ### FREQUENCE OF THE WORD ###
-    freq, most_common = frequency(pre_processed)
-    print(most_common)
+    freq12, most_common12 = frequency(pre_processed)
+    print(most_common12)
+    
+    with open('counts12.txt', 'w') as f:
+        for word in freq12.keys():
+            f.write(str(word) + '\t' + str(freq12[word]) + '\n')
 
-    with open('counts.txt', 'w') as f:
-        for word in freq.keys():
-            # print(word, freq[word])
-            f.write(str(word) + '\t' + str(freq[word]) + '\n')
+    ######## POSITIVE REVIEWS ######## 
+    # LOAD THE TEXT
+    text = load_text('reviews45.txt')
+    # PRE-PROCESS
+    pre_processed = pp.pre_process(text)
+    ### FREQUENCE OF THE WORD ###
+    freq45, most_common45 = frequency(pre_processed)
+    print(most_common45)
+   
+    with open('counts45.txt', 'w') as f:
+        for word in freq45.keys():
+            f.write(str(word) + '\t' + str(freq45[word]) + '\n')
+    
+    
+
 
         
     
