@@ -4,6 +4,7 @@ from nltk import word_tokenize
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 import nltk
+from nltk.corpus import brown
 # -*- coding: utf-8 -*-
 """
 Created on Fri Nov 15 09:43:45 2019
@@ -28,7 +29,7 @@ def text_lowercase(text):
 #WITHOUT SOPTWORDS
 def sw(text):
     stop_en = set(stopwords.words('english'))
-    new_stopwords = ["would", "could", "hes", "shes", "doesnt", "dont", "cant", "us", "im"]
+    new_stopwords = [ "n", "hes", "shes", "us", "im"]
     new_stopwords_list = stop_en.union(new_stopwords)
     no = [w for w in text if w not in new_stopwords_list]
     return no
@@ -51,6 +52,11 @@ def replace_numbers(words):
     return new_words
 
 
+### TAGSET ###
+def tagset(words):
+    tag=nltk.corpus.brown.tagged_words(tagset='universal')
+    return tag
+
 def pre_process(text):
     #### REMOVE HTML TAGS ###
     no_html = cleanhtml(text)
@@ -62,8 +68,10 @@ def pre_process(text):
     text_lc = text_lowercase(wt)
     # WITHOUT SOPTWORDS
     no_sw = sw(text_lc)
-    
     no_numbers=replace_numbers(no_sw)
-    return no_numbers
+    tag_words=tagset(no_numbers)
+    return tag_words
 
+
+ 	
     
