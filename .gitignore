@@ -1,4 +1,4 @@
 .DS_Store
 project/__pycache__/preprocess.cpython-37.pyc
 *.pyc
-__pycache__/
+__pycache__/*
