@@ -54,7 +54,7 @@ def replace_numbers(words):
 
 ### TAGSET ###
 def tagset(words):
-    tag=nltk.pos_tag(words)
+    tag=nltk.pos_tag(words, tagset='universal')
     return tag
 
 
@@ -72,7 +72,3 @@ def pre_process(text):
     no_numbers=replace_numbers(no_sw)
     tag_words=tagset(no_numbers)
     return tag_words
-
-
- 	
-    
