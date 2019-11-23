@@ -54,8 +54,9 @@ def replace_numbers(words):
 
 ### TAGSET ###
 def tagset(words):
-    tag=nltk.corpus.brown.tagged_words(tagset='universal')
+    tag=nltk.pos_tag(words)
     return tag
+
 
 def pre_process(text):
     #### REMOVE HTML TAGS ###
