@@ -2,10 +2,7 @@ import nltk
 from nltk.probability import FreqDist
 import preprocess as pp
 from helpers import load_csv_info, load_text, split_reviews
-from nltk.corpus import sentiwordnet as swn
 from pdb import set_trace
-from nltk.corpus import wordnet as wn
-
 
 def frequency(text):
     fdist=FreqDist(text)
