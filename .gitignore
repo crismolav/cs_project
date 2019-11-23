@@ -1,2 +1,4 @@
 .DS_Store
-__pycache__
+project/__pycache__/preprocess.cpython-37.pyc
+*.pyc
+__pycache__/
