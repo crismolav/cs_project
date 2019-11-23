@@ -16,6 +16,19 @@ def cleanhtml(raw_html):
     cleanr = re.compile('<.*?>')
     cleantext = re.sub(cleanr, ' ', raw_html)
     return cleantext
+
+### SEPARATE CONTRACT WORDS ### 
+def decontracted(phrase):
+    phrase = re.sub(r"n\'t", " not", phrase)
+    phrase = re.sub(r"\'re", " are", phrase)
+    phrase = re.sub(r"\'s", " is", phrase)
+    phrase = re.sub(r"\'d", " would", phrase)
+    phrase = re.sub(r"\'ll", " will", phrase)
+    phrase = re.sub(r"\'t", " not", phrase)
+    phrase = re.sub(r"\'ve", " have", phrase)
+    phrase = re.sub(r"\'m", " am", phrase)
+    return phrase
+
 ### PUNCTUATION ###
 def remove_punctuation(text):
     no_punct = "".join([c for c in text if c not in string.punctuation])
@@ -61,8 +74,10 @@ def tagset(words):
 def pre_process(text):
     #### REMOVE HTML TAGS ###
     no_html = cleanhtml(text)
+    ### REMOVE CONTRACTIONS ### 
+    no_contract=decontracted(no_html)
     ### PUNCTUATION ###
-    no_puntuation = remove_punctuation(no_html)
+    no_puntuation = remove_punctuation(no_contract)
     # TOKENIZE
     wt = word_tokenize(no_puntuation)
     # LOWERCASE
