@@ -2,7 +2,9 @@ import nltk
 import numpy as np
 from nltk.probability import FreqDist
 import preprocess as pp
-
+from nltk.corpus import sentiwordnet as swn
+from pdb import set_trace
+from nltk.corpus import wordnet as wn
 column_separator = "\t"
 
 def load_csv_info(fname="archivo.txt"):
@@ -36,6 +38,10 @@ if __name__=="__main__":
     ### FREQUENCE OF THE WORD ###
     freq, most_common = frequency(pre_processed)
     print(most_common)
+    word_synsets = wn.synsets('great')
+    word_sent = swn.senti_synsets('great', 's')
+    for synset in word_sent:
+        print(synset)
 
     with open('counts.txt', 'w') as f:
         for word in freq.keys():
