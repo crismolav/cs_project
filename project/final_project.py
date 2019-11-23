@@ -73,6 +73,8 @@ if __name__=="__main__":
     with open('counts45.txt', 'w') as f:
         for word in freq45.keys():
             f.write(str(word) + '\t' + str(freq45[word]) + '\n')
+    
+    
 
 
         
