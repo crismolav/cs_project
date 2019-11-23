@@ -42,11 +42,25 @@ def split_reviews(star_rating_list, review):
                     f12.write(current_review + '\n')
     return reviews_12, reviews_45
 
+def prior_of_the_classes(reviews_12, reviews_45):
+    num_neg_reviews = len(reviews_12)
+    num_pos_reviews = len(reviews_45)
+    total_reviews = num_neg_reviews + num_pos_reviews
+    
+    prior_neg = num_neg_reviews / total_reviews
+    prior_pos = num_pos_reviews / total_reviews
+    
+    return prior_neg, prior_pos
+
+
 if __name__=="__main__":
     #LOAD THE REVIEWS AND THE CORREPONDING RATING
     star_rating_list, review = load_csv_info("10000reviews.txt")
     #SPLIT THE REVIEWS INTO POSITIVE (RATING 4,5) AND NEGATIVE (RATING 1,2)
     reviews_12, reviews_45 = split_reviews(star_rating_list, review)
+    
+    #Prior probability
+    prior_neg, prior_pos = prior_of_the_classes(reviews_12, reviews_45)
     
     ######## NEGATIVE REVIEWS ######## 
     # LOAD THE TEXT
