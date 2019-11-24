@@ -6,7 +6,39 @@ from nltk.corpus import sentiwordnet as swn
 from nltk.corpus import wordnet as wn
 import numpy as np
 import math
-from sklearn.metrics import precision_score, recall_score, accuracy_score
+import matplotlib.pyplot as plt
+
+from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
+from sklearn.utils.multiclass import unique_labels
+from sklearn import svm, datasets
+
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def get_star_distribution(star_rating_list):
+    star_rating = np.array(star_rating_list)
+    unique, counts = np.unique(star_rating, return_counts=True)
+    for i, type in enumerate(unique):
+        print("class %s count:%s"%(type, counts[i]))
+
+def histogram_data(Y_true):
+    _ = plt.hist(Y_true, bins='auto')  # arguments are passed to np.histogram
+    plt.title("Histogram Amazon ratings")
+    plt.show()
+
+
+def plot_confusion_matrix2(confusion_matrix):
+    index = ['Bad', 'Good']
+    columns = ['Bad', 'Good']
+    df_cm = pd.DataFrame(confusion_matrix, index=index,
+                         columns=columns)
+    # plt.figure(figsize=(10, 7))
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    sn.heatmap(df_cm, annot=True, fmt="d", center=1)
+    plt.show()
 
 def process_reviews(star_rating_list, review_list):
     Y_true = list()
@@ -22,16 +54,31 @@ def process_reviews(star_rating_list, review_list):
         baseline_classification = get_baseline_classification(review=processed_review)
         Y_true.append(original_classification)
         Y_pred.append(baseline_classification)
-        if index == 100:
-            break
 
     bl_precision = precision_score(Y_true, Y_pred)
     bl_recall    = recall_score(Y_true, Y_pred)
     bl_accuracy  = accuracy_score(Y_true, Y_pred)
+
+    Y_classes = get_Y_classes()
+    cm = confusion_matrix(Y_true, Y_pred)
+    tn, fp, fn, tp = cm.ravel()
+    print("TN: %s" % tn)
+    print("FP: %s" % fp)
+    print("FN: %s" % fn)
+    print("TP: %s" % tp)
+    print(cm)
+    # plot_confusion_matrix2(cm))
+    # # Plot non-normalized confusion matrix
+    # plot_confusion_matrix(Y_true, Y_pred, classes=Y_classes,
+    #                       title='Confusion matrix, without normalization')
     print("Base line indicators\n")
     print("Precision: %s" % bl_precision)
     print("Recall: %s" % bl_recall)
     print("Accuracy: %s"%bl_accuracy)
+
+def get_Y_classes():
+    Y_classes = np.array(['Bad', 'Good'])
+    return Y_classes
 
 def get_classification_group_for_star_rating(star_rating):
     if int(star_rating) in [4, 5]:
@@ -63,11 +110,15 @@ def get_sentiment_scores(review):
 
     return (total_positive, total_negative)
 
+
+POS_not_found = set()
 def get_sentiment_score_word_pos_tuple(word_pos_tuple):
     word = word_pos_tuple[0]
     pos = word_pos_tuple[1]
     if not pos_is_in_model(pos):
-        print("WARNING: pos not recognized: %s"%pos)
+        if pos not in POS_not_found:
+            print("WARNING: pos not recognized: %s"%pos)
+            POS_not_found.add(pos)
         return 0, 0
 
     wordnet_pos = transform_pos_to_wordnet_notation(pos=pos)
@@ -131,14 +182,71 @@ def transform_pos_to_wordnet_notation(pos):
     }
     return pos_to_wordnet_pos_dictionary[pos]
 
-if __name__=="__main__":
-    # word_synsets = wn.synsets('love','v')
-    # for synset in word_synsets:
-    #     sent_synset = swn.senti_synset(synset.name())
-    #     print(sent_synset.pos_score())
+def plot_confusion_matrix(y_true, y_pred, classes,
+                          normalize=False,
+                          title=None,
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
 
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    # Only use the labels that appear in the data
+    classes = classes[unique_labels(y_true, y_pred)]
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    plt.show()
+
+if __name__=="__main__":
+    iris = datasets.load_iris()
+    X = iris.data
+    y = iris.target
+    class_names = iris.target_names
+    # set_trace()
     # LOAD THE REVIEWS AND THE CORREPONDING RATING
-    star_rating_list, review_list = load_csv_info("10000reviews.txt")
+    file_name1 = "10000reviews.txt"
+    file_name2 = "videogames_9999.tsv"
+    star_rating_list, review_list = load_csv_info(file_name1)
+    #Get distribution
+    get_star_distribution(star_rating_list)
     # PROCESS REVIEWS
     process_reviews(star_rating_list=star_rating_list, review_list=review_list)
 
