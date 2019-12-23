@@ -3,6 +3,7 @@ from nltk.probability import FreqDist
 import preprocess as pp
 from helpers import load_csv_info, load_text, split_reviews
 from pdb import set_trace
+import spacy
 
 def frequency(text):
     fdist=FreqDist(text)
@@ -20,6 +21,7 @@ def prior_of_the_classes(reviews_12, reviews_45):
     return prior_neg, prior_pos
 
 if __name__=="__main__":
+    nlp = spacy.load("en_core_web_sm")
     #LOAD THE REVIEWS AND THE CORREPONDING RATING
     star_rating_list, review = load_csv_info("10000reviews.txt")
     #SPLIT THE REVIEWS INTO POSITIVE (RATING 4,5) AND NEGATIVE (RATING 1,2)
@@ -31,7 +33,7 @@ if __name__=="__main__":
     # LOAD THE TEXT
     text = load_text('reviews12.txt')
     # PRE-PROCESS
-    pre_processed = pp.pre_process(text)
+    pre_processed = pp.pre_process(text, nlp)
     ### FREQUENCE OF THE WORD ###
 
     freq12, most_common12 = frequency(pre_processed)
@@ -47,7 +49,7 @@ if __name__=="__main__":
     # PRE-PROCESS
     pre_processed = pp.pre_process(text)
     ### FREQUENCE OF THE WORD ###
-    freq45, most_common45 = frequency(pre_processed)
+    freq45, most_common45 = frequency(pre_processed, nlp)
     # print(most_common45)
     with open('counts45.txt', 'w') as f:
         for word in freq45.keys():

@@ -1,10 +1,15 @@
 import re
 import string
-from nltk import word_tokenize
-from nltk.corpus import stopwords
+from nltk import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords, words
 from nltk.probability import FreqDist
 import nltk
+from nltk.tokenize.treebank import TreebankWordDetokenizer
 from nltk.corpus import brown
+from nltk.stem import WordNetLemmatizer
+from pdb import set_trace
+import spacy
+
 # -*- coding: utf-8 -*-
 """
 Created on Fri Nov 15 09:43:45 2019
@@ -27,6 +32,7 @@ def decontracted(phrase):
     phrase = re.sub(r"\'t", " not", phrase)
     phrase = re.sub(r"\'ve", " have", phrase)
     phrase = re.sub(r"\'m", " am", phrase)
+
     return phrase
 
 ### PUNCTUATION ###
@@ -68,22 +74,99 @@ def replace_numbers(words):
 ### TAGSET ###
 def tagset(words):
     tag=nltk.pos_tag(words, tagset='universal')
+    add_negative_positive_to_tuple(tagset=tag)
+
     return tag
 
 
-def pre_process(text):
+def add_negative_positive_to_tuple(tagset):
+    for index, (word, pos) in enumerate(tagset):
+        if '_not' in word:
+            modified_tuple = (
+                word.replace("_not", ""), pos, "neg")
+            tagset[index] = modified_tuple
+        else:
+            tagset[index] = tagset[index] + ("pos",)
+
+def remove_extra_spaces(sentence):
+    final_sentence = sentence
+    double_space = '  '
+    single_space = ' '
+    while double_space in final_sentence:
+        final_sentence = final_sentence.replace(double_space, single_space)
+
+    return final_sentence
+
+def get_sentence_with_negation_mark(sentence, nlp):
+    parsed_tree = nlp(sentence)
+    negation_index_list = []
+    neg_verb = ''
+    #TODO: instead of index save the word and then negate it. Other wise its difficutl
+    for token in parsed_tree:
+        if str(token.dep_) == 'neg':
+            if token.i != 0 and not token.head.lemma_ in ['be']:
+                negation_index_list.append(str(token.head))
+                # negation_index_list.append(str(token.head)+'_not')
+                neg_verb = token.head.lemma_
+            elif token.i != 0 and token.head.lemma_ in ['be']:
+                neg_verb = token.head.lemma_
+        if token.dep_ == 'acomp' and token.head.lemma_ == neg_verb:
+            # negation_index_list.append(str(token)+'_not')
+            negation_index_list.append(str(token))
+    wt = word_tokenize(sentence)
+
+    for negated_word in negation_index_list:
+        if negated_word in wt:
+            word_index = wt.index(negated_word)
+            wt[word_index] += "_not"
+    detokenized  = TreebankWordDetokenizer().detokenize(wt)
+    return detokenized
+
+def is_english(sentence):
+    text_as_list = word_tokenize(sentence)
+    max_num = min(10, len(text_as_list))
+    threshold = int(max_num/1.5)
+    english_words = [x for x in words.words()] + ['spoilers']
+    foreign_words = 0
+    for word_ind in range(max_num):
+        word_lemma = WordNetLemmatizer().lemmatize(text_as_list[word_ind], 'v').lower()
+        word_lemma_not_verb = WordNetLemmatizer().lemmatize(text_as_list[word_ind]).lower()
+        if (word_lemma not in english_words
+                and word_lemma_not_verb not in english_words):
+            foreign_words+=1
+
+    if foreign_words > threshold:
+        return False
+    else:
+        return True
+
+def pre_process(text, nlp):
     #### REMOVE HTML TAGS ###
     no_html = cleanhtml(text)
-    ### REMOVE CONTRACTIONS ### 
-    no_contract=decontracted(no_html)
-    ### PUNCTUATION ###
-    no_puntuation = remove_punctuation(no_contract)
-    # TOKENIZE
-    wt = word_tokenize(no_puntuation)
-    # LOWERCASE
-    text_lc = text_lowercase(wt)
-    # WITHOUT SOPTWORDS
-    no_sw = sw(text_lc)
-    no_numbers=replace_numbers(no_sw)
-    tag_words=tagset(no_numbers)
-    return tag_words
+    ### TOKENIZE SENTENCES
+    sentences_tokens = sent_tokenize(no_html)
+    preprocessed_list = []
+
+    for i, sentence in enumerate(sentences_tokens):
+        ### REMOVE CONTRACTIONS ###
+        no_contract=decontracted(sentence)
+        ### PUNCTUATION ###
+        no_puntuation = remove_punctuation(no_contract)
+        ### REMOVE EXTRA SPACES ###
+        no_extra_spaces = remove_extra_spaces(no_puntuation)
+        ### RETURNS EMPTY IF LANGUAGE IS NOT ENGLISH
+        if i ==0 and not is_english(sentence=no_extra_spaces):
+            return []
+        ### ADD _neg ###
+        with_neg = get_sentence_with_negation_mark(sentence=no_extra_spaces, nlp=nlp)
+        # TOKENIZE
+        wt = word_tokenize(with_neg)
+        text_lc = text_lowercase(wt)
+        # LOWERCASE
+        # WITHOUT SOPTWORDS
+        no_sw = sw(text_lc)
+        no_numbers=replace_numbers(no_sw)
+        tag_words=tagset(no_numbers)
+        preprocessed_list+=tag_words
+    return preprocessed_list
+

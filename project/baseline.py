@@ -15,6 +15,8 @@ from sklearn import svm, datasets
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
+import spacy
+
 
 
 def get_star_distribution(star_rating_list):
@@ -40,20 +42,33 @@ def plot_confusion_matrix2(confusion_matrix):
     sn.heatmap(df_cm, annot=True, fmt="d", center=1)
     plt.show()
 
-def process_reviews(star_rating_list, review_list):
+def process_reviews(star_rating_list, review_list, nlp, max_review=None):
     Y_true = list()
     Y_pred = list()
+    ignored_non_english = 0
     for index, review in enumerate(review_list):
         star_rating = star_rating_list[index]
         # IGNORE NEUTRAL RATINGS
         if int(star_rating) == 3:
             continue
-        processed_review = prepro.pre_process(text=review)
+        processed_review = prepro.pre_process(text=review, nlp=nlp)
+        # IGNORE OTHER LANGUAGES
+        if processed_review == []:
+            ignored_non_english +=1
+            continue
+
         original_classification = get_classification_group_for_star_rating(
             star_rating=star_rating)
+
         baseline_classification = get_baseline_classification(review=processed_review)
+
         Y_true.append(original_classification)
         Y_pred.append(baseline_classification)
+
+        if original_classification == 0 and baseline_classification == 1:
+            pass
+        if max_review is not None and index == max_review-1:
+            break
 
     bl_precision = precision_score(Y_true, Y_pred)
     bl_recall    = recall_score(Y_true, Y_pred)
@@ -104,10 +119,9 @@ def get_sentiment_scores(review):
         positive_score, negative_score = get_sentiment_score_word_pos_tuple(
             word_pos_tuple=word_pos_tuple)
         total_positive += positive_score
-        # if math.isnan(total_positive):
-        #     set_trace()
         total_negative += negative_score
-
+    # if total_positive == 0 and total_negative == 0:
+    #     set_trace()
     return (total_positive, total_negative)
 
 
@@ -115,6 +129,7 @@ POS_not_found = set()
 def get_sentiment_score_word_pos_tuple(word_pos_tuple):
     word = word_pos_tuple[0]
     pos = word_pos_tuple[1]
+    pos_or_neg = word_pos_tuple[2]
     if not pos_is_in_model(pos):
         if pos not in POS_not_found:
             print("WARNING: pos not recognized: %s"%pos)
@@ -125,8 +140,10 @@ def get_sentiment_score_word_pos_tuple(word_pos_tuple):
     word_synsets = wn.synsets(word, wordnet_pos)
     pos_sentiment_score, neg_sentiment_score = \
         calculate_avg_sentiment_scores_for_synsets(word_synsets=word_synsets)
-
-    return pos_sentiment_score , neg_sentiment_score
+    if pos_or_neg == 'pos':
+        return pos_sentiment_score , neg_sentiment_score
+    else:
+        return neg_sentiment_score, pos_sentiment_score
 
 def calculate_avg_sentiment_scores_for_synsets(word_synsets):
     if word_synsets == []:
@@ -248,5 +265,9 @@ if __name__=="__main__":
     #Get distribution
     get_star_distribution(star_rating_list)
     # PROCESS REVIEWS
-    process_reviews(star_rating_list=star_rating_list, review_list=review_list)
+    nlp = spacy.load("en_core_web_sm")
+    max_review = 1000
+    process_reviews(
+        star_rating_list=star_rating_list, review_list=review_list, nlp=nlp,
+        max_review=max_review)
 
