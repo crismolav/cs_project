@@ -8,10 +8,10 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, confusion_matrix
 from sklearn.utils.multiclass import unique_labels
-from sklearn import svm, datasets
-
+from sklearn import datasets
+from autocorrect import Speller
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -45,34 +45,21 @@ def plot_confusion_matrix2(confusion_matrix):
 def process_reviews(star_rating_list, review_list, nlp, max_review=None):
     Y_true = list()
     Y_pred = list()
-    ignored_non_english = 0
+    ignored_non_english = [0]
     for index, review in enumerate(review_list):
         star_rating = star_rating_list[index]
         # IGNORE NEUTRAL RATINGS
-        if int(star_rating) == 3:
-            continue
-        processed_review = prepro.pre_process(text=review, nlp=nlp)
-        # IGNORE OTHER LANGUAGES
-        if processed_review == []:
-            ignored_non_english +=1
-            continue
-
-        original_classification = get_classification_group_for_star_rating(
-            star_rating=star_rating)
-
-        baseline_classification = get_baseline_classification(review=processed_review)
-
-        Y_true.append(original_classification)
-        Y_pred.append(baseline_classification)
-
-        if original_classification == 0 and baseline_classification == 1:
-            pass
+        process_one_review(
+            star_rating=star_rating, review=review, nlp=nlp,
+            ignored_non_english=ignored_non_english,
+            Y_true=Y_true, Y_pred=Y_pred)
         if max_review is not None and index == max_review-1:
             break
 
     bl_precision = precision_score(Y_true, Y_pred)
     bl_recall    = recall_score(Y_true, Y_pred)
     bl_accuracy  = accuracy_score(Y_true, Y_pred)
+    bl_f1_score  = f1_score(Y_true, Y_pred)
 
     Y_classes = get_Y_classes()
     cm = confusion_matrix(Y_true, Y_pred)
@@ -90,6 +77,28 @@ def process_reviews(star_rating_list, review_list, nlp, max_review=None):
     print("Precision: %s" % bl_precision)
     print("Recall: %s" % bl_recall)
     print("Accuracy: %s"%bl_accuracy)
+    print("F1 score: %s" % bl_f1_score)
+
+def process_one_review(star_rating, review, nlp, ignored_non_english, Y_true, Y_pred):
+    # IGNORE NEUTRAL RATINGS
+    if int(star_rating) == 3:
+        return
+    processed_review = prepro.pre_process(text=review, nlp=nlp)
+    # IGNORE OTHER LANGUAGES
+    if processed_review == []:
+        ignored_non_english[0] += 1
+        return
+
+    original_classification = get_classification_group_for_star_rating(
+        star_rating=star_rating)
+
+    baseline_classification, final_score = get_baseline_classification(review=processed_review)
+
+    Y_true.append(original_classification)
+    Y_pred.append(baseline_classification)
+
+    # if original_classification == 0 and baseline_classification == 1:
+    #     set_trace()
 
 def get_Y_classes():
     Y_classes = np.array(['Bad', 'Good'])
@@ -105,12 +114,13 @@ def get_classification_group_for_star_rating(star_rating):
 
 def get_baseline_classification(review):
     baseline_score_pos, baseline_score_neg  = get_sentiment_scores(review)
-    final_score = baseline_score_pos - baseline_score_neg
-    threshold = 0
+    baseline_score_neg = max(0.001, baseline_score_neg)
+    final_score = baseline_score_pos/baseline_score_neg
+    threshold = 1.3
     if final_score >threshold:
-        return 1  # Positive review prediction
+        return 1, final_score  # Positive review prediction
     else:
-        return 0  # Negative review prediction
+        return 0, final_score  # Negative review prediction
 
 def get_sentiment_scores(review):
     total_positive = 0
@@ -118,10 +128,14 @@ def get_sentiment_scores(review):
     for word_pos_tuple in review:
         positive_score, negative_score = get_sentiment_score_word_pos_tuple(
             word_pos_tuple=word_pos_tuple)
+
         total_positive += positive_score
         total_negative += negative_score
-    # if total_positive == 0 and total_negative == 0:
-    #     set_trace()
+
+        if positive_score != 0 or negative_score != 0:
+            print("word: %s, positive:%s ,negative:%s"%(
+                word_pos_tuple, positive_score, negative_score))
+
     return (total_positive, total_negative)
 
 
@@ -136,14 +150,23 @@ def get_sentiment_score_word_pos_tuple(word_pos_tuple):
             POS_not_found.add(pos)
         return 0, 0
 
-    wordnet_pos = transform_pos_to_wordnet_notation(pos=pos)
-    word_synsets = wn.synsets(word, wordnet_pos)
+    word_synsets = get_synsets(word=word, pos=pos)
+
     pos_sentiment_score, neg_sentiment_score = \
         calculate_avg_sentiment_scores_for_synsets(word_synsets=word_synsets)
     if pos_or_neg == 'pos':
         return pos_sentiment_score , neg_sentiment_score
     else:
         return neg_sentiment_score, pos_sentiment_score
+
+def get_synsets(word, pos):
+    wordnet_pos = transform_pos_to_wordnet_notation(pos=pos)
+    word_synsets = wn.synsets(word, wordnet_pos)
+
+    if word_synsets == [] and wordnet_pos == 'n':
+        word_synsets += wn.synsets(word, 'a')
+
+    return word_synsets
 
 def calculate_avg_sentiment_scores_for_synsets(word_synsets):
     if word_synsets == []:
@@ -253,11 +276,6 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     plt.show()
 
 if __name__=="__main__":
-    iris = datasets.load_iris()
-    X = iris.data
-    y = iris.target
-    class_names = iris.target_names
-    # set_trace()
     # LOAD THE REVIEWS AND THE CORREPONDING RATING
     file_name1 = "10000reviews.txt"
     file_name2 = "videogames_9999.tsv"

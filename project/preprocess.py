@@ -7,6 +7,7 @@ import nltk
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from nltk.corpus import brown
 from nltk.stem import WordNetLemmatizer
+from autocorrect import Speller
 from pdb import set_trace
 import spacy
 

@@ -1,6 +1,7 @@
 import unittest
 import spacy
 import preprocess as pp
+import baseline as bl
 from pdb import set_trace
 from unittest.mock import patch
 
@@ -70,6 +71,66 @@ class FinalTests(unittest.TestCase):
         result = pp.is_english(sentence=sentence)
 
         self.assertFalse(result)
+
+    def test_get_sentiment_score_word_pos_tuple__positive_case(self):
+        word_pos_tuple = ('good', 'ADV', 'pos')
+
+        result = bl.get_sentiment_score_word_pos_tuple(
+            word_pos_tuple=word_pos_tuple)
+        expected = (0.1875, 0.0)
+
+        self.assertEqual(expected, result)
+
+    def test_get_sentiment_score_word_pos_tuple__negation_case(self):
+        word_pos_tuple = ('good', 'ADV', 'neg')
+
+        result = bl.get_sentiment_score_word_pos_tuple(
+            word_pos_tuple=word_pos_tuple)
+        expected = (0.0, 0.1875)
+
+        self.assertEqual(expected, result)
+
+    def test_process_one_review__negative(self):
+        star_rating = 2
+        Y_true = []
+        Y_pred = []
+        ignored_non_english = [0]
+        #TODO good study case for the word worship
+        review = "I'm sorry, but calling Jesus the messiah is as kosher as eating a ham " \
+                 "and cheese sandwich on Yom Kippur.  Bringing about world peace, " \
+                 "having the world worship the same G-d, and the return of the Jewish diaspora" \
+                 " back to the land of Israel were hardly accomplished by who the Christians" \
+                 " believe to be the Messiah.  If he truly was Moshiach," \
+                 " then none of these discussions would be taking place.<br /><br />" \
+                 "When the Moshiach does come, it will end hatred and intolerance--" \
+                 "unlike what happened when Jesus' followers tried to propagate their faith."
+
+        bl.process_one_review(
+            star_rating=star_rating, review=review, nlp=nlp,
+            ignored_non_english=ignored_non_english,
+            Y_true=Y_true, Y_pred=Y_pred)
+        expected = [0] , [0]
+
+        self.assertEqual(expected, (Y_true, Y_pred))
+
+    # def test_process_one_review__negative_hard(self):
+    #     star_rating = 2
+    #     Y_true = []
+    #     Y_pred = []
+    #     ignored_non_english = [0]
+    #     #TODO good study case for the word worship
+    #     review = 'Very artistic quilts shown, no detailed instructions.  ' \
+    #              'More on the theory of making memory quilts.  ' \
+    #              'I was diappointed in the book. I had expected' \
+    #              ' moreinstructions on the actualy making the quilat'
+    #
+    #     bl.process_one_review(
+    #         star_rating=star_rating, review=review, nlp=nlp,
+    #         ignored_non_english=ignored_non_english,
+    #         Y_true=Y_true, Y_pred=Y_pred)
+    #     expected = [0] , [0]
+    #
+    #     self.assertEqual(expected, (Y_true, Y_pred))
 
 if __name__ == '__main__':
     unittest.main()
