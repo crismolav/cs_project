@@ -8,7 +8,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, confusion_matrix
+from sklearn.metrics import precision_score, recall_score,\
+    accuracy_score, f1_score, confusion_matrix, roc_auc_score
 from sklearn.utils.multiclass import unique_labels
 from sklearn import datasets
 from autocorrect import Speller
@@ -52,7 +53,7 @@ def process_reviews(star_rating_list, review_list, nlp, max_review=None):
         process_one_review(
             star_rating=star_rating, review=review, nlp=nlp,
             ignored_non_english=ignored_non_english,
-            Y_true=Y_true, Y_pred=Y_pred)
+            Y_true=Y_true, Y_pred=Y_pred, negative_reviews_as_positive=False)
         if max_review is not None and index == max_review-1:
             break
 
@@ -60,6 +61,7 @@ def process_reviews(star_rating_list, review_list, nlp, max_review=None):
     bl_recall    = recall_score(Y_true, Y_pred)
     bl_accuracy  = accuracy_score(Y_true, Y_pred)
     bl_f1_score  = f1_score(Y_true, Y_pred)
+    bl_roc_score = roc_auc_score(Y_true, Y_pred)
 
     Y_classes = get_Y_classes()
     cm = confusion_matrix(Y_true, Y_pred)
@@ -78,8 +80,11 @@ def process_reviews(star_rating_list, review_list, nlp, max_review=None):
     print("Recall: %s" % bl_recall)
     print("Accuracy: %s"%bl_accuracy)
     print("F1 score: %s" % bl_f1_score)
+    print("ROC score: %s" % bl_roc_score)
 
-def process_one_review(star_rating, review, nlp, ignored_non_english, Y_true, Y_pred):
+def process_one_review(
+        star_rating, review, nlp, ignored_non_english,
+        Y_true, Y_pred, negative_reviews_as_positive=False):
     # IGNORE NEUTRAL RATINGS
     if int(star_rating) == 3:
         return
@@ -90,13 +95,15 @@ def process_one_review(star_rating, review, nlp, ignored_non_english, Y_true, Y_
         return
 
     original_classification = get_classification_group_for_star_rating(
-        star_rating=star_rating)
+        star_rating=star_rating,
+        negative_reviews_as_positive=negative_reviews_as_positive)
 
-    baseline_classification, final_score = get_baseline_classification(review=processed_review)
+    baseline_classification, final_score = get_baseline_classification(
+        review=processed_review,
+        negative_reviews_as_positive=negative_reviews_as_positive)
 
     Y_true.append(original_classification)
     Y_pred.append(baseline_classification)
-
     # if original_classification == 0 and baseline_classification == 1:
     #     set_trace()
 
@@ -104,7 +111,16 @@ def get_Y_classes():
     Y_classes = np.array(['Bad', 'Good'])
     return Y_classes
 
-def get_classification_group_for_star_rating(star_rating):
+def get_classification_group_for_star_rating(
+        star_rating, negative_reviews_as_positive=False):
+    if not negative_reviews_as_positive:
+        return get_classification_group_for_star_rating_positive_case(
+        star_rating=star_rating)
+    else:
+        return not get_classification_group_for_star_rating_positive_case(
+        star_rating=star_rating)
+
+def get_classification_group_for_star_rating_positive_case(star_rating):
     if int(star_rating) in [4, 5]:
         return 1
     elif int(star_rating) in [1, 2]:
@@ -112,15 +128,17 @@ def get_classification_group_for_star_rating(star_rating):
     else:
         raise Exception("can't process star_rating number:%s"%star_rating)
 
-def get_baseline_classification(review):
+def get_baseline_classification(review, negative_reviews_as_positive):
     baseline_score_pos, baseline_score_neg  = get_sentiment_scores(review)
     baseline_score_neg = max(0.001, baseline_score_neg)
     final_score = baseline_score_pos/baseline_score_neg
     threshold = 1.3
     if final_score >threshold:
-        return 1, final_score  # Positive review prediction
+        category = 1 if not negative_reviews_as_positive else 0
     else:
-        return 0, final_score  # Negative review prediction
+        category = 0 if not negative_reviews_as_positive else 1
+
+    return category, final_score
 
 def get_sentiment_scores(review):
     total_positive = 0
@@ -132,9 +150,9 @@ def get_sentiment_scores(review):
         total_positive += positive_score
         total_negative += negative_score
 
-        if positive_score != 0 or negative_score != 0:
-            print("word: %s, positive:%s ,negative:%s"%(
-                word_pos_tuple, positive_score, negative_score))
+        # if positive_score != 0 or negative_score != 0:
+        #     print("word: %s, positive:%s ,negative:%s"%(
+        #         word_pos_tuple, positive_score, negative_score))
 
     return (total_positive, total_negative)
 

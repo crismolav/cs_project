@@ -28,6 +28,13 @@ class FinalTests(unittest.TestCase):
 
         self.assertEqual(expected_list, result)
 
+    def test_identify_negation__noun_phrase(self):
+        sentence = "Very artistic quilts shown, no detailed instructions"
+        result = pp.get_sentence_with_negation_mark(sentence=sentence, nlp=nlp)
+        expected_list = 'Very artistic quilts shown, no detailed_not instructions_not'
+
+        self.assertEqual(expected_list, result)
+
     def test_remove_remove_extra_spaces__real_case(self):
         sentence = 'Lawrence Block is novels  and he has had several series using different characters  are never particularly actionfilled'
 
@@ -113,24 +120,32 @@ class FinalTests(unittest.TestCase):
 
         self.assertEqual(expected, (Y_true, Y_pred))
 
-    # def test_process_one_review__negative_hard(self):
-    #     star_rating = 2
-    #     Y_true = []
-    #     Y_pred = []
-    #     ignored_non_english = [0]
-    #     #TODO good study case for the word worship
-    #     review = 'Very artistic quilts shown, no detailed instructions.  ' \
-    #              'More on the theory of making memory quilts.  ' \
-    #              'I was diappointed in the book. I had expected' \
-    #              ' moreinstructions on the actualy making the quilat'
-    #
-    #     bl.process_one_review(
-    #         star_rating=star_rating, review=review, nlp=nlp,
-    #         ignored_non_english=ignored_non_english,
-    #         Y_true=Y_true, Y_pred=Y_pred)
-    #     expected = [0] , [0]
-    #
-    #     self.assertEqual(expected, (Y_true, Y_pred))
+    def test_tagset__correct_spelling(self):
+        words = ['diappointed', 'book']
+        result = pp.tagset(words=words)
+        expected = [('disappointed', 'VERB', 'pos'), ('book', 'NOUN', 'pos')]
+
+        self.assertEqual(expected, result)
+
+    def test_process_one_review__negative_hard(self):
+        star_rating = 2
+        Y_true = []
+        Y_pred = []
+        ignored_non_english = [0]
+        #TODO good study case for the word worship
+        review = 'Very artistic quilts shown, no detailed instructions.  ' \
+                 'More on the theory of making memory quilts.  ' \
+                 'I was diappointed in the book. I had expected' \
+                 ' moreinstructions on the actualy making the quilat'
+
+        bl.process_one_review(
+            star_rating=star_rating, review=review, nlp=nlp,
+            ignored_non_english=ignored_non_english,
+            Y_true=Y_true, Y_pred=Y_pred)
+        expected = [0] , [0]
+
+        self.assertEqual(expected, (Y_true, Y_pred))
+
 
 if __name__ == '__main__':
     unittest.main()

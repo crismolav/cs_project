@@ -17,6 +17,8 @@ Created on Fri Nov 15 09:43:45 2019
 
 @author: Mar Adrian
 """
+
+spell = Speller(lang='en')
 #### REMOVE HTML TAGS ###
 def cleanhtml(raw_html):
     cleanr = re.compile('<.*?>')
@@ -75,6 +77,7 @@ def replace_numbers(words):
 ### TAGSET ###
 def tagset(words):
     tag=nltk.pos_tag(words, tagset='universal')
+    #ADD NEGATIVE OR POSITIVE INDICATOR && AUTOCORRECT
     add_negative_positive_to_tuple(tagset=tag)
 
     return tag
@@ -82,12 +85,15 @@ def tagset(words):
 
 def add_negative_positive_to_tuple(tagset):
     for index, (word, pos) in enumerate(tagset):
-        if '_not' in word:
-            modified_tuple = (
-                word.replace("_not", ""), pos, "neg")
-            tagset[index] = modified_tuple
-        else:
-            tagset[index] = tagset[index] + ("pos",)
+        negative_or_positive = 'neg' if "_not" in word else 'pos'
+        modified_tuple = (
+            spell(word.replace("_not", "")), pos, negative_or_positive)
+        tagset[index] = modified_tuple
+
+
+# corrected = spell(word)
+# new_tuple = (corrected, pos, neg_or_pos)
+# new_tag_words.append(new_tuple)
 
 def remove_extra_spaces(sentence):
     final_sentence = sentence
@@ -104,15 +110,15 @@ def get_sentence_with_negation_mark(sentence, nlp):
     neg_verb = ''
     #TODO: instead of index save the word and then negate it. Other wise its difficutl
     for token in parsed_tree:
-        if str(token.dep_) == 'neg':
+        if str(token.dep_) == 'neg' or token.lemma_ =='no':
             if token.i != 0 and not token.head.lemma_ in ['be']:
                 negation_index_list.append(str(token.head))
                 # negation_index_list.append(str(token.head)+'_not')
                 neg_verb = token.head.lemma_
+
             elif token.i != 0 and token.head.lemma_ in ['be']:
                 neg_verb = token.head.lemma_
-        if token.dep_ == 'acomp' and token.head.lemma_ == neg_verb:
-            # negation_index_list.append(str(token)+'_not')
+        if token.dep_ in ['acomp', 'amod'] and token.head.lemma_ == neg_verb:
             negation_index_list.append(str(token))
     wt = word_tokenize(sentence)
 
@@ -141,6 +147,15 @@ def is_english(sentence):
     else:
         return True
 
+def autocorrect_text(tag_words):
+    new_tag_words = []
+    for word, pos, neg_or_pos  in tag_words:
+        corrected = spell(word)
+        new_tuple = (corrected, pos, neg_or_pos)
+        new_tag_words.append(new_tuple)
+
+    return new_tag_words
+
 def pre_process(text, nlp):
     #### REMOVE HTML TAGS ###
     no_html = cleanhtml(text)
@@ -167,7 +182,10 @@ def pre_process(text, nlp):
         # WITHOUT SOPTWORDS
         no_sw = sw(text_lc)
         no_numbers=replace_numbers(no_sw)
+        # TAG & AUTOCORRECT
         tag_words=tagset(no_numbers)
+
         preprocessed_list+=tag_words
+
     return preprocessed_list
 
