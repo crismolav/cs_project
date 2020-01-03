@@ -9,7 +9,11 @@ from nltk.corpus import brown
 from nltk.stem import WordNetLemmatizer
 from autocorrect import Speller
 from pdb import set_trace
+import numpy as np
+import json
 import spacy
+import os.path
+from helpers import load_csv_info
 
 # -*- coding: utf-8 -*-
 """
@@ -79,7 +83,7 @@ def tagset(words):
     tag=nltk.pos_tag(words, tagset='universal')
     #ADD NEGATIVE OR POSITIVE INDICATOR && AUTOCORRECT
     add_negative_positive_to_tuple(tagset=tag)
-
+    # return [list(x) for x in tag]
     return tag
 
 
@@ -124,8 +128,11 @@ def get_sentence_with_negation_mark(sentence, nlp):
 
     for negated_word in negation_index_list:
         if negated_word in wt:
-            word_index = wt.index(negated_word)
-            wt[word_index] += "_not"
+            # set_trace()
+            # word_index = wt.index(negated_word)
+            word_indexes = np.where(np.array(wt) == negated_word)[0]
+            for word_index in word_indexes:
+                wt[word_index] += "_not"
     detokenized  = TreebankWordDetokenizer().detokenize(wt)
     return detokenized
 
@@ -184,8 +191,80 @@ def pre_process(text, nlp):
         no_numbers=replace_numbers(no_sw)
         # TAG & AUTOCORRECT
         tag_words=tagset(no_numbers)
-
         preprocessed_list+=tag_words
 
     return preprocessed_list
 
+
+def pre_process_all_reviews(file_name, max_review, nlp):
+    output_file_name = get_cache_file_name(
+        file_name=file_name, max_review=max_review)
+    #look in cache
+    if os.path.isfile(output_file_name):
+        print("CACHE hit: %s"%output_file_name)
+        return
+    #pre process reviews
+    else:
+        print("CACHE miss: %s"%output_file_name)
+        pre_process_all_reviews_do_work(
+            file_name=file_name, max_review=max_review, nlp=nlp)
+
+def pre_process_all_reviews_do_work(file_name, max_review, nlp):
+    output_file_name = get_cache_file_name(
+        file_name=file_name, max_review=max_review)
+
+    star_rating_list, review_list = load_csv_info(file_name)
+    f = open(output_file_name, 'w')
+
+    for ind, review in enumerate(review_list):
+        star_rating = star_rating_list[ind]
+        review_processed = pre_process(text=review, nlp=nlp)
+        review_dict = {
+            'star_rating':star_rating,
+            'pre_processed_review':review_processed
+        }
+        f.write(json.dumps(review_dict) + '\n')
+        if ind == max_review:
+            break
+
+    f.close()
+
+def pre_process_all_reviews_no_token(file_name, max_review, nlp):
+    output_file_name = get_cache_file_name(
+        file_name=file_name, max_review=max_review)
+    #look in cache
+    if os.path.isfile(output_file_name):
+        print("CACHE hit: %s"%output_file_name)
+        return
+    #pre process reviews
+    else:
+        print("CACHE miss: %s"%output_file_name)
+        pre_process_all_reviews_do_work(
+            file_name=file_name, max_review=max_review, nlp=nlp)
+
+def pre_process_all_reviews_do_work_no_token(file_name, max_review, nlp):
+    output_file_name = get_cache_file_name(
+        file_name=file_name, max_review=max_review)
+
+    star_rating_list, review_list = load_csv_info(file_name)
+    f = open(output_file_name, 'w')
+
+    for ind, review in enumerate(review_list):
+        star_rating = star_rating_list[ind]
+        review_processed = pre_process(text=review, nlp=nlp)
+        review_dict = {
+            'star_rating':star_rating,
+            'pre_processed_review':review_processed
+        }
+        f.write(json.dumps(review_dict) + '\n')
+        if ind == max_review:
+            break
+
+    f.close()
+
+def get_cache_file_name(file_name, max_review=None):
+    file_name_final = file_name.replace(".txt", "")
+    file_name_final = file_name_final.replace(".tsv", "")
+    if max_review is not None:
+        file_name_final += '_%s' % str(max_review)
+    return 'prepro_cache/%s.prepro' % file_name_final

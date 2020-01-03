@@ -17,6 +17,7 @@ import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
 import spacy
+import json
 
 
 
@@ -43,19 +44,28 @@ def plot_confusion_matrix2(confusion_matrix):
     sn.heatmap(df_cm, annot=True, fmt="d", center=1)
     plt.show()
 
-def process_reviews(star_rating_list, review_list, nlp, max_review=None):
+def process_reviews(file_name, max_review=None, threshold=1.3):
     Y_true = list()
     Y_pred = list()
     ignored_non_english = [0]
-    for index, review in enumerate(review_list):
-        star_rating = star_rating_list[index]
-        # IGNORE NEUTRAL RATINGS
-        process_one_review(
-            star_rating=star_rating, review=review, nlp=nlp,
-            ignored_non_english=ignored_non_english,
-            Y_true=Y_true, Y_pred=Y_pred, negative_reviews_as_positive=False)
-        if max_review is not None and index == max_review-1:
-            break
+    output_file_name = prepro.get_cache_file_name(
+        file_name=file_name, max_review=max_review)
+    with open(output_file_name) as f:
+        index = 0
+        for line in f:
+            pp_review_dict = json.loads(line)
+            star_rating = pp_review_dict['star_rating']
+            pre_processed_review = pp_review_dict['pre_processed_review']
+            process_one_review_pp(
+                star_rating=star_rating,
+                pre_processed_review=pre_processed_review,
+                ignored_non_english=ignored_non_english,
+                Y_true=Y_true, Y_pred=Y_pred, index=index,
+                negative_reviews_as_positive=False,
+                threshold=threshold)
+            if max_review is not None and index == max_review-1:
+                break
+            index+=1
 
     bl_precision = precision_score(Y_true, Y_pred)
     bl_recall    = recall_score(Y_true, Y_pred)
@@ -82,15 +92,14 @@ def process_reviews(star_rating_list, review_list, nlp, max_review=None):
     print("F1 score: %s" % bl_f1_score)
     print("ROC score: %s" % bl_roc_score)
 
-def process_one_review(
-        star_rating, review, nlp, ignored_non_english,
-        Y_true, Y_pred, negative_reviews_as_positive=False):
+def process_one_review_pp(
+        star_rating, pre_processed_review, ignored_non_english,
+        Y_true, Y_pred, index, negative_reviews_as_positive=False, threshold=1.3):
     # IGNORE NEUTRAL RATINGS
     if int(star_rating) == 3:
         return
-    processed_review = prepro.pre_process(text=review, nlp=nlp)
     # IGNORE OTHER LANGUAGES
-    if processed_review == []:
+    if pre_processed_review == []:
         ignored_non_english[0] += 1
         return
 
@@ -99,8 +108,9 @@ def process_one_review(
         negative_reviews_as_positive=negative_reviews_as_positive)
 
     baseline_classification, final_score = get_baseline_classification(
-        review=processed_review,
-        negative_reviews_as_positive=negative_reviews_as_positive)
+        review=pre_processed_review,
+        negative_reviews_as_positive=negative_reviews_as_positive,
+        threshold=threshold, index=index)
 
     Y_true.append(original_classification)
     Y_pred.append(baseline_classification)
@@ -128,11 +138,13 @@ def get_classification_group_for_star_rating_positive_case(star_rating):
     else:
         raise Exception("can't process star_rating number:%s"%star_rating)
 
-def get_baseline_classification(review, negative_reviews_as_positive):
-    baseline_score_pos, baseline_score_neg  = get_sentiment_scores(review)
+def get_baseline_classification(
+        review, negative_reviews_as_positive, threshold, index):
+    baseline_score_pos, baseline_score_neg  = get_sentiment_scores(
+        review=review, index=index)
     baseline_score_neg = max(0.001, baseline_score_neg)
     final_score = baseline_score_pos/baseline_score_neg
-    threshold = 1.3
+
     if final_score >threshold:
         category = 1 if not negative_reviews_as_positive else 0
     else:
@@ -140,20 +152,23 @@ def get_baseline_classification(review, negative_reviews_as_positive):
 
     return category, final_score
 
-def get_sentiment_scores(review):
-    total_positive = 0
-    total_negative = 0
-    for word_pos_tuple in review:
-        positive_score, negative_score = get_sentiment_score_word_pos_tuple(
-            word_pos_tuple=word_pos_tuple)
+CACHE_sentiment_scores = {}
+def get_sentiment_scores(review, index):
+    if index not in CACHE_sentiment_scores:
+        total_positive = 0
+        total_negative = 0
+        for word_pos_tuple in review:
+            positive_score, negative_score = get_sentiment_score_word_pos_tuple(
+                word_pos_tuple=word_pos_tuple)
+            total_positive += positive_score
+            total_negative += negative_score
 
-        total_positive += positive_score
-        total_negative += negative_score
-
-        # if positive_score != 0 or negative_score != 0:
-        #     print("word: %s, positive:%s ,negative:%s"%(
-        #         word_pos_tuple, positive_score, negative_score))
-
+        CACHE_sentiment_scores[index] = total_positive, total_negative
+            # if positive_score != 0 or negative_score != 0:
+            #     print("word: %s, positive:%s ,negative:%s"%(
+            #         word_pos_tuple, positive_score, negative_score))
+    else:
+        total_positive, total_negative = CACHE_sentiment_scores[index]
     return (total_positive, total_negative)
 
 
@@ -162,6 +177,8 @@ def get_sentiment_score_word_pos_tuple(word_pos_tuple):
     word = word_pos_tuple[0]
     pos = word_pos_tuple[1]
     pos_or_neg = word_pos_tuple[2]
+    if word_pos_tuple[:2]==('like', 'ADP'):
+        return 0, 0
     if not pos_is_in_model(pos):
         if pos not in POS_not_found:
             print("WARNING: pos not recognized: %s"%pos)
@@ -172,6 +189,7 @@ def get_sentiment_score_word_pos_tuple(word_pos_tuple):
 
     pos_sentiment_score, neg_sentiment_score = \
         calculate_avg_sentiment_scores_for_synsets(word_synsets=word_synsets)
+
     if pos_or_neg == 'pos':
         return pos_sentiment_score , neg_sentiment_score
     else:
@@ -199,12 +217,16 @@ def calculate_avg_sentiment_scores_for_synsets(word_synsets):
 
     return np.mean(pos_sentiment_score_array), np.mean(neg_sentiment_score_array)
 
+CACHE_sentiment_scores_for_synset = {}
 def calcualte_sentiment_scores_for_synset(synset):
     synset_name = synset.name()
-    word_sentiment = swn.senti_synset(synset_name)
-    pos_score = word_sentiment.pos_score()
-    neg_score = word_sentiment.neg_score()
-
+    if synset_name not in CACHE_sentiment_scores_for_synset:
+        word_sentiment = swn.senti_synset(synset_name)
+        pos_score = word_sentiment.pos_score()
+        neg_score = word_sentiment.neg_score()
+        CACHE_sentiment_scores_for_synset[synset_name] = pos_score, neg_score
+    else:
+        pos_score, neg_score = CACHE_sentiment_scores_for_synset[synset_name]
     return pos_score, neg_score
 
 def get_pos_to_wordnet_pos_dictionary():
@@ -236,7 +258,7 @@ def transform_pos_to_wordnet_notation(pos):
         'DET': 'a',
         'ADP': 'a',
         'PRT': 'a',
-        'CONJ': 'a'
+        'CONJ': ''
     }
     return pos_to_wordnet_pos_dictionary[pos]
 
@@ -294,16 +316,21 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     plt.show()
 
 if __name__=="__main__":
-    # LOAD THE REVIEWS AND THE CORREPONDING RATING
+    # LOAD THE REVIEWS AND THE CORRESPONDING RATING
     file_name1 = "10000reviews.txt"
     file_name2 = "videogames_9999.tsv"
     star_rating_list, review_list = load_csv_info(file_name1)
     #Get distribution
     get_star_distribution(star_rating_list)
-    # PROCESS REVIEWS
     nlp = spacy.load("en_core_web_sm")
     max_review = 1000
-    process_reviews(
-        star_rating_list=star_rating_list, review_list=review_list, nlp=nlp,
-        max_review=max_review)
+    # PRE PROCESS REVIEWS
+    prepro.pre_process_all_reviews(
+        file_name=file_name1, max_review=max_review, nlp=nlp)
+    # PROCESS REVIEWs
+    threshold_list = [1, 1.1, 1.2, 1.3, 1.4 , 1.5 , 1.6, 1.7, 1.8]
+    for threshold in threshold_list:
+        print("***************")
+        print("THRESHOLD: %s"%str(threshold))
+        process_reviews(file_name=file_name1,max_review=max_review, threshold=threshold)
 
