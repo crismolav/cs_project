@@ -94,7 +94,7 @@ def process_reviews(file_name, max_review=None, threshold=1.3):
 
 def process_one_review_pp(
         star_rating, pre_processed_review, ignored_non_english,
-        Y_true, Y_pred, index, negative_reviews_as_positive=False, threshold=1.3):
+        Y_true, Y_pred, index=None, negative_reviews_as_positive=False, threshold=1.3):
     # IGNORE NEUTRAL RATINGS
     if int(star_rating) == 3:
         return
@@ -154,7 +154,7 @@ def get_baseline_classification(
 
 CACHE_sentiment_scores = {}
 def get_sentiment_scores(review, index):
-    if index not in CACHE_sentiment_scores:
+    if index is None or index not in CACHE_sentiment_scores:
         total_positive = 0
         total_negative = 0
         for word_pos_tuple in review:
