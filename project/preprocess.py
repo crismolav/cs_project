@@ -5,15 +5,14 @@ from nltk.corpus import stopwords, words
 from nltk.probability import FreqDist
 import nltk
 from nltk.tokenize.treebank import TreebankWordDetokenizer
-from nltk.corpus import brown
 from nltk.stem import WordNetLemmatizer
 from autocorrect import Speller
 from pdb import set_trace
 import numpy as np
 import json
-import spacy
 import os.path
-from helpers import load_csv_info
+from helpers import load_csv_info, transform_pos_to_wordnet_notation
+from multiprocessing import Pool
 
 # -*- coding: utf-8 -*-
 """
@@ -48,9 +47,10 @@ def remove_punctuation(text):
     return no_punct
 
 # LOWERCASE 
-def text_lowercase(text): 
+def text_lowercase(text):
     l = [item.lower() for item in text]
-    return l 
+    return l
+
 
 #WITHOUT SOPTWORDS
 def sw(text):
@@ -58,8 +58,10 @@ def sw(text):
     new_stopwords = [ "n", "hes", "shes", "us", "im"]
     new_stopwords_list = stop_en.union(new_stopwords)
     no = [w for w in text if w not in new_stopwords_list]
+
     return no
-### FREQUENCE OF THE WORD ###
+
+    ### FREQUENCE OF THE WORD ###
 def frequency(text):
     fdist=FreqDist(text)
     return fdist
@@ -79,19 +81,37 @@ def replace_numbers(words):
 
 
 ### TAGSET ###
-def tagset(words):
+def tagset(words, as_sentence=False):
     tag=nltk.pos_tag(words, tagset='universal')
     #ADD NEGATIVE OR POSITIVE INDICATOR && AUTOCORRECT
-    add_negative_positive_to_tuple(tagset=tag)
     # return [list(x) for x in tag]
-    return tag
+    la_tagset = lemmatize_and_autocorrect_words(tagset=tag)
+    if as_sentence:
+        la_tagset = ' '.join([spell(x[0]) for x in la_tagset]) + '. '
+    else:
+        add_negative_positive_to_tuple(tagset=la_tagset)
+    return la_tagset
 
+def lemmatize_and_autocorrect_words(tagset):
+    lemmatized_list = []
+    lemmatizer = WordNetLemmatizer()
+    for word_tuple in tagset:
+        pos_simple = transform_pos_to_wordnet_notation(pos = word_tuple[1])
+        autocorrected = spell(word_tuple[0])
+        if pos_simple not in ['']:
+            lemma = lemmatizer.lemmatize(autocorrected, pos_simple).lower()
+        else:
+            lemma = autocorrected
+        new_tuple = (lemma, word_tuple[1])
+        lemmatized_list.append(new_tuple)
+
+    return lemmatized_list
 
 def add_negative_positive_to_tuple(tagset):
     for index, (word, pos) in enumerate(tagset):
         negative_or_positive = 'neg' if "_not" in word else 'pos'
         modified_tuple = (
-            spell(word.replace("_not", "")), pos, negative_or_positive)
+            word.replace("_not", ""), pos, negative_or_positive)
         tagset[index] = modified_tuple
 
 
@@ -113,7 +133,9 @@ def get_sentence_with_negation_mark(sentence, nlp):
     negation_index_list = []
     neg_verb = ''
     #TODO: instead of index save the word and then negate it. Other wise its difficutl
+    lemmatized_list = []
     for token in parsed_tree:
+        lemmatized_list.append(token.lemma_)
         if str(token.dep_) == 'neg' or token.lemma_ =='no':
             if token.i != 0 and not token.head.lemma_ in ['be']:
                 negation_index_list.append(str(token.head))
@@ -124,6 +146,8 @@ def get_sentence_with_negation_mark(sentence, nlp):
                 neg_verb = token.head.lemma_
         if token.dep_ in ['acomp', 'amod'] and token.head.lemma_ == neg_verb:
             negation_index_list.append(str(token))
+
+    lemmatized_sentence = ' '.join(lemmatized_list)
     wt = word_tokenize(sentence)
 
     for negated_word in negation_index_list:
@@ -154,21 +178,24 @@ def is_english(sentence):
     else:
         return True
 
-def autocorrect_text(tag_words):
-    new_tag_words = []
-    for word, pos, neg_or_pos  in tag_words:
-        corrected = spell(word)
-        new_tuple = (corrected, pos, neg_or_pos)
-        new_tag_words.append(new_tuple)
+# def autocorrect_text(tag_words):
+#     new_tag_words = []
+#     for word, pos, neg_or_pos  in tag_words:
+#         corrected = spell(word)
+#         new_tuple = (corrected, pos, neg_or_pos)
+#         new_tag_words.append(new_tuple)
+#
+#     return new_tag_words
 
-    return new_tag_words
-
-def pre_process(text, nlp):
+def pre_process(text, nlp, as_sentence=False):
     #### REMOVE HTML TAGS ###
     no_html = cleanhtml(text)
     ### TOKENIZE SENTENCES
     sentences_tokens = sent_tokenize(no_html)
-    preprocessed_list = []
+    if as_sentence:
+        preprocessed_list = ''
+    else:
+        preprocessed_list = []
 
     for i, sentence in enumerate(sentences_tokens):
         ### REMOVE CONTRACTIONS ###
@@ -179,7 +206,9 @@ def pre_process(text, nlp):
         no_extra_spaces = remove_extra_spaces(no_puntuation)
         ### RETURNS EMPTY IF LANGUAGE IS NOT ENGLISH
         if i ==0 and not is_english(sentence=no_extra_spaces):
-            return []
+            return preprocessed_list
+
+        ### LEMMATIZE WORDS AND
         ### ADD _neg ###
         with_neg = get_sentence_with_negation_mark(sentence=no_extra_spaces, nlp=nlp)
         # TOKENIZE
@@ -187,18 +216,23 @@ def pre_process(text, nlp):
         text_lc = text_lowercase(wt)
         # LOWERCASE
         # WITHOUT SOPTWORDS
-        no_sw = sw(text_lc)
+        if as_sentence:
+            no_sw = text_lc
+        else:
+            no_sw = sw(text_lc)
+
         no_numbers=replace_numbers(no_sw)
         # TAG & AUTOCORRECT
-        tag_words=tagset(no_numbers)
-        preprocessed_list+=tag_words
+        tag_words=tagset(no_numbers, as_sentence=as_sentence)
+
+        preprocessed_list += tag_words
 
     return preprocessed_list
 
 
-def pre_process_all_reviews(file_name, max_review, nlp):
+def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False):
     output_file_name = get_cache_file_name(
-        file_name=file_name, max_review=max_review)
+        file_name=file_name, max_review=max_review, as_sentence=as_sentence)
     #look in cache
     if os.path.isfile(output_file_name):
         print("CACHE hit: %s"%output_file_name)
@@ -207,18 +241,19 @@ def pre_process_all_reviews(file_name, max_review, nlp):
     else:
         print("CACHE miss: %s"%output_file_name)
         pre_process_all_reviews_do_work(
-            file_name=file_name, max_review=max_review, nlp=nlp)
+            file_name=file_name, max_review=max_review, nlp=nlp,
+            as_sentence=as_sentence)
 
-def pre_process_all_reviews_do_work(file_name, max_review, nlp):
+def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence):
     output_file_name = get_cache_file_name(
-        file_name=file_name, max_review=max_review)
+        file_name=file_name, max_review=max_review, as_sentence=as_sentence)
 
     star_rating_list, review_list = load_csv_info(file_name)
     f = open(output_file_name, 'w')
 
     for ind, review in enumerate(review_list):
         star_rating = star_rating_list[ind]
-        review_processed = pre_process(text=review, nlp=nlp)
+        review_processed = pre_process(text=review, nlp=nlp, as_sentence=as_sentence)
         review_dict = {
             'star_rating':star_rating,
             'pre_processed_review':review_processed
@@ -229,42 +264,14 @@ def pre_process_all_reviews_do_work(file_name, max_review, nlp):
 
     f.close()
 
-def pre_process_all_reviews_no_token(file_name, max_review, nlp):
-    output_file_name = get_cache_file_name(
-        file_name=file_name, max_review=max_review)
-    #look in cache
-    if os.path.isfile(output_file_name):
-        print("CACHE hit: %s"%output_file_name)
-        return
-    #pre process reviews
-    else:
-        print("CACHE miss: %s"%output_file_name)
-        pre_process_all_reviews_do_work(
-            file_name=file_name, max_review=max_review, nlp=nlp)
-
-def pre_process_all_reviews_do_work_no_token(file_name, max_review, nlp):
-    output_file_name = get_cache_file_name(
-        file_name=file_name, max_review=max_review)
-
-    star_rating_list, review_list = load_csv_info(file_name)
-    f = open(output_file_name, 'w')
-
-    for ind, review in enumerate(review_list):
-        star_rating = star_rating_list[ind]
-        review_processed = pre_process(text=review, nlp=nlp)
-        review_dict = {
-            'star_rating':star_rating,
-            'pre_processed_review':review_processed
-        }
-        f.write(json.dumps(review_dict) + '\n')
-        if ind == max_review:
-            break
-
-    f.close()
-
-def get_cache_file_name(file_name, max_review=None):
+def get_cache_file_name(file_name, max_review=None, as_sentence=False):
     file_name_final = file_name.replace(".txt", "")
     file_name_final = file_name_final.replace(".tsv", "")
+    file_name_final = '_'.join(file_name_final.split("_")[:-1])
+    subfolder = file_name_final
     if max_review is not None:
         file_name_final += '_%s' % str(max_review)
-    return 'prepro_cache/%s.prepro' % file_name_final
+    if as_sentence:
+        return 'prepro_cache/%s/%s.as.prepro' % (subfolder, file_name_final)
+    else:
+        return 'prepro_cache/%s/%s.prepro' % (subfolder, file_name_final)

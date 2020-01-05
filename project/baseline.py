@@ -1,5 +1,7 @@
 from nltk.corpus import wordnet as wn
-from helpers import load_csv_info, load_text, split_reviews
+from helpers import load_csv_info, load_text, split_reviews,\
+    get_star_distribution, get_classification_group_for_star_rating,\
+    print_metrics, transform_pos_to_wordnet_notation
 import preprocess as prepro
 from pdb import set_trace
 from nltk.corpus import sentiwordnet as swn
@@ -21,12 +23,6 @@ import json
 
 
 
-def get_star_distribution(star_rating_list):
-    star_rating = np.array(star_rating_list)
-    unique, counts = np.unique(star_rating, return_counts=True)
-    for i, type in enumerate(unique):
-        print("class %s count:%s"%(type, counts[i]))
-
 def histogram_data(Y_true):
     _ = plt.hist(Y_true, bins='auto')  # arguments are passed to np.histogram
     plt.title("Histogram Amazon ratings")
@@ -44,12 +40,13 @@ def plot_confusion_matrix2(confusion_matrix):
     sn.heatmap(df_cm, annot=True, fmt="d", center=1)
     plt.show()
 
-def process_reviews(file_name, max_review=None, threshold=1.3):
+def process_reviews(file_name, logreg=False, max_review=None, threshold=1.3):
     Y_true = list()
     Y_pred = list()
     ignored_non_english = [0]
     output_file_name = prepro.get_cache_file_name(
-        file_name=file_name, max_review=max_review)
+        file_name=file_name, max_review=max_review,
+        as_sentence=logreg)
     with open(output_file_name) as f:
         index = 0
         for line in f:
@@ -67,30 +64,7 @@ def process_reviews(file_name, max_review=None, threshold=1.3):
                 break
             index+=1
 
-    bl_precision = precision_score(Y_true, Y_pred)
-    bl_recall    = recall_score(Y_true, Y_pred)
-    bl_accuracy  = accuracy_score(Y_true, Y_pred)
-    bl_f1_score  = f1_score(Y_true, Y_pred)
-    bl_roc_score = roc_auc_score(Y_true, Y_pred)
 
-    Y_classes = get_Y_classes()
-    cm = confusion_matrix(Y_true, Y_pred)
-    tn, fp, fn, tp = cm.ravel()
-    print("TN: %s" % tn)
-    print("FP: %s" % fp)
-    print("FN: %s" % fn)
-    print("TP: %s" % tp)
-    print(cm)
-    # plot_confusion_matrix2(cm))
-    # # Plot non-normalized confusion matrix
-    # plot_confusion_matrix(Y_true, Y_pred, classes=Y_classes,
-    #                       title='Confusion matrix, without normalization')
-    print("Base line indicators\n")
-    print("Precision: %s" % bl_precision)
-    print("Recall: %s" % bl_recall)
-    print("Accuracy: %s"%bl_accuracy)
-    print("F1 score: %s" % bl_f1_score)
-    print("ROC score: %s" % bl_roc_score)
 
 def process_one_review_pp(
         star_rating, pre_processed_review, ignored_non_english,
@@ -108,7 +82,7 @@ def process_one_review_pp(
         negative_reviews_as_positive=negative_reviews_as_positive)
 
     baseline_classification, final_score = get_baseline_classification(
-        review=pre_processed_review,
+            review=pre_processed_review,
         negative_reviews_as_positive=negative_reviews_as_positive,
         threshold=threshold, index=index)
 
@@ -121,22 +95,6 @@ def get_Y_classes():
     Y_classes = np.array(['Bad', 'Good'])
     return Y_classes
 
-def get_classification_group_for_star_rating(
-        star_rating, negative_reviews_as_positive=False):
-    if not negative_reviews_as_positive:
-        return get_classification_group_for_star_rating_positive_case(
-        star_rating=star_rating)
-    else:
-        return not get_classification_group_for_star_rating_positive_case(
-        star_rating=star_rating)
-
-def get_classification_group_for_star_rating_positive_case(star_rating):
-    if int(star_rating) in [4, 5]:
-        return 1
-    elif int(star_rating) in [1, 2]:
-        return 0
-    else:
-        raise Exception("can't process star_rating number:%s"%star_rating)
 
 def get_baseline_classification(
         review, negative_reviews_as_positive, threshold, index):
@@ -162,11 +120,11 @@ def get_sentiment_scores(review, index):
                 word_pos_tuple=word_pos_tuple)
             total_positive += positive_score
             total_negative += negative_score
-
-        CACHE_sentiment_scores[index] = total_positive, total_negative
             # if positive_score != 0 or negative_score != 0:
             #     print("word: %s, positive:%s ,negative:%s"%(
             #         word_pos_tuple, positive_score, negative_score))
+        CACHE_sentiment_scores[index] = total_positive, total_negative
+
     else:
         total_positive, total_negative = CACHE_sentiment_scores[index]
     return (total_positive, total_negative)
@@ -186,7 +144,7 @@ def get_sentiment_score_word_pos_tuple(word_pos_tuple):
         return 0, 0
 
     word_synsets = get_synsets(word=word, pos=pos)
-
+    # set_trace()
     pos_sentiment_score, neg_sentiment_score = \
         calculate_avg_sentiment_scores_for_synsets(word_synsets=word_synsets)
 
@@ -247,20 +205,6 @@ def pos_is_in_model(pos):
     pos_to_wordnet_pos_dictionary = get_pos_to_wordnet_pos_dictionary()
     return pos in pos_to_wordnet_pos_dictionary
 
-def transform_pos_to_wordnet_notation(pos):
-    pos_to_wordnet_pos_dictionary = {
-        'NOUN': 'n',
-        'PRON': 'n',
-        'ADV': 'r',
-        'VERB': 'v',
-        'ADJ': 'a',
-        'NUM': 'a',
-        'DET': 'a',
-        'ADP': 'a',
-        'PRT': 'a',
-        'CONJ': ''
-    }
-    return pos_to_wordnet_pos_dictionary[pos]
 
 def plot_confusion_matrix(y_true, y_pred, classes,
                           normalize=False,
@@ -323,7 +267,7 @@ if __name__=="__main__":
     #Get distribution
     get_star_distribution(star_rating_list)
     nlp = spacy.load("en_core_web_sm")
-    max_review = 1000
+    max_review = 11
     # PRE PROCESS REVIEWS
     prepro.pre_process_all_reviews(
         file_name=file_name1, max_review=max_review, nlp=nlp)
@@ -332,5 +276,7 @@ if __name__=="__main__":
     for threshold in threshold_list:
         print("***************")
         print("THRESHOLD: %s"%str(threshold))
-        process_reviews(file_name=file_name1,max_review=max_review, threshold=threshold)
+        process_reviews(
+            file_name=file_name1, logreg=False,
+            max_review=max_review, threshold=threshold)
 

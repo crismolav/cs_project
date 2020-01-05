@@ -140,7 +140,7 @@ class FinalTests(unittest.TestCase):
     def test_tagset__correct_spelling(self):
         words = ['diappointed', 'book']
         result = pp.tagset(words=words)
-        expected = [('disappointed', 'VERB', 'pos'), ('book', 'NOUN', 'pos')]
+        expected = [('disappoint', 'VERB', 'pos'), ('book', 'NOUN', 'pos')]
 
         self.assertEqual(expected, result)
 
@@ -155,7 +155,6 @@ class FinalTests(unittest.TestCase):
                  'I was diappointed in the book. I had expected' \
                  ' moreinstructions on the actualy making the quilat'
         pre_processed_review = pp.pre_process(text=review, nlp=nlp)
-
         bl.process_one_review_pp(
             star_rating=star_rating, pre_processed_review=pre_processed_review,
             ignored_non_english=ignored_non_english,
@@ -206,5 +205,12 @@ class FinalTests(unittest.TestCase):
 
         # self.assertEqual(expected, (Y_true, Y_pred))
 
+    def test_lemmatize_words__general_test(self):
+        tagset = [('diappointed', 'VERB'), ('book', 'NOUN')]
+
+        result = pp.lemmatize_and_autocorrect_words(tagset=tagset)
+        expected = [('disappoint', 'VERB'), ('book', 'NOUN')]
+
+        self.assertEqual(expected, result)
 if __name__ == '__main__':
     unittest.main()
