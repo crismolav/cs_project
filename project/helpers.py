@@ -3,7 +3,7 @@ from sklearn.metrics import precision_score, recall_score,\
     accuracy_score, f1_score, confusion_matrix, roc_auc_score
 column_separator = "\t"
 
-def load_csv_info(fname):
+def load_csv_info(fname, max_review=None):
     star_rating_list = []
     review_body_list = []
     file=open(fname)
@@ -12,7 +12,10 @@ def load_csv_info(fname):
         marketplace, customer_id, review_id, product_id, product_parent, product_title, product_category, star_rating, helpful_votes, total_votes, vine, verified_purchase, review_headline, review_body, review_date = line.strip().split(column_separator)
         star_rating_list.append(star_rating)
         review_body_list.append(review_body)
-    return  star_rating_list, review_body_list
+    if max_review is None:
+        return  star_rating_list, review_body_list
+    else:
+        return star_rating_list[:max_review], review_body_list[:max_review]
 
 def load_text(filename):
     file = open(filename, 'rt')

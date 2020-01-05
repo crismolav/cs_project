@@ -185,28 +185,31 @@ def experiment():
 
     print(X.shape)
 
-
-if __name__=="__main__":
-    # LOAD THE REVIEWS AND THE CORRESPONDING RATING
-    if sys.argv[1] == 'books':
+def get_file_name_from_sys_arg(sys_argv):
+    if sys_argv[1] == 'books':
         file_name = "Books_50000.tsv"
-    elif sys.argv[1] == 'video_games':
+    elif sys_argv[1] == 'video_games':
         file_name = "Video_Games_50000.tsv"
-    elif sys.argv[1] == 'beauty':
+    elif sys_argv[1] == 'beauty':
         file_name = "Beauty_50000.tsv"
     else:
         raise Exception("unknown file tipe")
+    return file_name
+
+if __name__=="__main__":
+    # LOAD THE REVIEWS AND THE CORRESPONDING RATING
+    file_name = get_file_name_from_sys_arg(sys_argv=sys.argv)
     star_rating_list, review_list = load_csv_info(file_name)
     #Get distribution
     get_star_distribution(star_rating_list)
     nlp = spacy.load("en_core_web_sm")
-    if len(sys.argv) > 2:
-        max_review = int(sys.argv[2])
-    else:
-        max_review = None
+    max_review = int(sys.argv[2]) if len(sys.argv) > 2 else None
+    in_parallel = True if (len(sys.argv) > 3 and sys.argv[3] == "parallel") else False
+
     logreg = True
     # PRE PROCESS REVIEWS
     prepro.pre_process_all_reviews(
-        file_name=file_name, max_review=max_review, nlp=nlp, as_sentence=True)
+        file_name=file_name, max_review=max_review, nlp=nlp, as_sentence=True,
+        in_parallel=in_parallel)
     # FIT LOG REG
     fit_logreg(file_name=file_name, max_review=max_review)

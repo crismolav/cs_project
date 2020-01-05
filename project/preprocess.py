@@ -87,7 +87,7 @@ def tagset(words, as_sentence=False):
     # return [list(x) for x in tag]
     la_tagset = lemmatize_and_autocorrect_words(tagset=tag)
     if as_sentence:
-        la_tagset = ' '.join([spell(x[0]) for x in la_tagset]) + '. '
+        la_tagset = ' '.join([x[0] for x in la_tagset]) + '. '
     else:
         add_negative_positive_to_tuple(tagset=la_tagset)
     return la_tagset
@@ -230,7 +230,7 @@ def pre_process(text, nlp, as_sentence=False):
     return preprocessed_list
 
 
-def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False):
+def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False, in_parallel=False):
     output_file_name = get_cache_file_name(
         file_name=file_name, max_review=max_review, as_sentence=as_sentence)
     #look in cache
@@ -242,26 +242,43 @@ def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False):
         print("CACHE miss: %s"%output_file_name)
         pre_process_all_reviews_do_work(
             file_name=file_name, max_review=max_review, nlp=nlp,
-            as_sentence=as_sentence)
+            as_sentence=as_sentence, in_parallel=in_parallel)
 
-def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence):
+def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence, in_parallel=False):
     output_file_name = get_cache_file_name(
         file_name=file_name, max_review=max_review, as_sentence=as_sentence)
 
-    star_rating_list, review_list = load_csv_info(file_name)
+    star_rating_list, review_list = load_csv_info(
+        fname=file_name, max_review=max_review)
     f = open(output_file_name, 'w')
 
-    for ind, review in enumerate(review_list):
-        star_rating = star_rating_list[ind]
-        review_processed = pre_process(text=review, nlp=nlp, as_sentence=as_sentence)
-        review_dict = {
-            'star_rating':star_rating,
-            'pre_processed_review':review_processed
-        }
-        f.write(json.dumps(review_dict) + '\n')
-        if ind == max_review:
-            break
+    if not in_parallel:
+        for ind, review in enumerate(review_list):
+            star_rating = star_rating_list[ind]
+            review_processed = pre_process(text=review, nlp=nlp, as_sentence=as_sentence)
+            review_dict = {
+                'star_rating':star_rating,
+                'pre_processed_review':review_processed
+            }
+            f.write(json.dumps(review_dict) + '\n')
 
+    else:
+        print("calculating in parallel")
+        agents = 10
+        chunksize = int(len(review_list)/agents)
+        dataset = zip(review_list,
+                      [nlp]*len(review_list),
+                      [as_sentence]*len(review_list))
+
+        with Pool(processes=agents) as pool:
+            results = pool.starmap(pre_process, dataset, chunksize)
+        for ind, result in enumerate(results):
+            star_rating = star_rating_list[ind]
+            review_dict = {
+                'star_rating': star_rating,
+                'pre_processed_review': result
+            }
+            f.write(json.dumps(review_dict) + '\n')
     f.close()
 
 def get_cache_file_name(file_name, max_review=None, as_sentence=False):

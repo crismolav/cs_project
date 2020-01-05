@@ -212,5 +212,14 @@ class FinalTests(unittest.TestCase):
         expected = [('disappoint', 'VERB'), ('book', 'NOUN')]
 
         self.assertEqual(expected, result)
+
+    def test_lemmatize_words__general_test2(self):
+        tagset = [('disappointed', 'VERB'), ('book', 'NOUN')]
+
+        result = pp.lemmatize_and_autocorrect_words(tagset=tagset)
+        expected = [('disappoint', 'VERB'), ('book', 'NOUN')]
+
+        self.assertEqual(expected, result)
+
 if __name__ == '__main__':
     unittest.main()
