@@ -46,11 +46,13 @@ def split_reviews(star_rating_list, review):
                     f12.write(current_review + '\n')
     return reviews_12, reviews_45
 
-def get_star_distribution(star_rating_list):
-    star_rating = np.array(star_rating_list)
+def get_star_distribution(star_rating_list, max_review=None):
+    filtered_list = star_rating_list[:max_review] if max_review is not None else star_rating_list
+    star_rating = np.array(filtered_list)
     unique, counts = np.unique(star_rating, return_counts=True)
     for i, type in enumerate(unique):
         print("class %s count:%s"%(type, counts[i]))
+
 
 def get_classification_group_for_star_rating(
         star_rating, negative_reviews_as_positive=False):
@@ -117,3 +119,14 @@ def transform_pos_to_wordnet_notation(pos):
         return pos_to_wordnet_pos_dictionary[pos]
     else:
         return ''
+
+def get_file_name_from_sys_arg(sys_argv):
+    if sys_argv[1] == 'books':
+        file_name = "Books_50000.tsv"
+    elif sys_argv[1] == 'video_games':
+        file_name = "Video_Games_50000.tsv"
+    elif sys_argv[1] == 'beauty':
+        file_name = "Beauty_50000.tsv"
+    else:
+        raise Exception("unknown file tipe")
+    return file_name

@@ -253,7 +253,9 @@ def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False, in_pa
         return
     #pre process reviews
     else:
-        next_best_cache = look_for_next_best_cache(file_name, output_file_name, max_review)
+        next_best_cache = look_for_next_best_cache(
+            file_name, output_file_name, max_review,
+            as_sentence=as_sentence, misclassified=False)
         min_review = None
 
         if next_best_cache is not None:
@@ -269,22 +271,26 @@ def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False, in_pa
             min_review=min_review)
 
 
-def look_for_next_best_cache(file_name, output_file_name, max_review):
+def look_for_next_best_cache(file_name, output_file_name, max_review,
+                             as_sentence=False, misclassified=False):
     subfolder = get_subfolder_name(file_name)
     folder = 'prepro_cache/%s'%(subfolder)
     onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
     next_best_cache = get_best_files(
-        onlyfiles=onlyfiles, subfolder=subfolder, max_review=max_review)
+        onlyfiles=onlyfiles, subfolder=subfolder, max_review=max_review,
+        as_sentence=as_sentence, misclassified=misclassified)
     if next_best_cache is None:
         return None
     return folder+'/'+next_best_cache
 
-def get_best_files(onlyfiles, subfolder, max_review):
+def get_best_files(onlyfiles, subfolder, max_review, as_sentence=False, misclassified=False):
     best_file = None
     max_num_reviews = 0
+    file_extension = get_file_extension(
+        as_sentence=as_sentence, misclassified=misclassified)
 
     for cache_file in onlyfiles:
-        if cache_file.startswith(subfolder):
+        if cache_file.startswith(subfolder) and cache_file.split('.')[-1] == file_extension :
             review_number = get_cache_review_number(cache_file)
             if review_number>max_num_reviews and review_number<max_review:
                 best_file = cache_file
@@ -334,14 +340,16 @@ def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence, in_
             f.write(json.dumps(review_dict) + '\n')
     f.close()
 
-def get_cache_file_name(file_name, max_review=None, as_sentence=False):
+def get_cache_file_name(file_name, max_review=None, as_sentence=False,
+                        misclassified=False):
     file_name_final = file_name.replace(".txt", "")
     file_name_final = file_name_final.replace(".tsv", "")
     file_name_final = '_'.join(file_name_final.split("_")[:-1])
     subfolder = file_name_final
     if max_review is not None:
         file_name_final += '_%s' % str(max_review)
-    file_extension = get_file_extension(as_sentence=as_sentence)
+    file_extension = get_file_extension(
+        as_sentence=as_sentence, misclassified=misclassified)
 
     return 'prepro_cache/%s/%s.%s' % (subfolder, file_name_final, file_extension)
 
@@ -352,8 +360,14 @@ def get_subfolder_name(file_name):
     subfolder = file_name_final
     return subfolder
 
-def get_file_extension(as_sentence):
+def get_file_extension(as_sentence, misclassified):
     if as_sentence:
-        return 'as.prepro'
+        if not misclassified:
+            return 'as_prepro'
+        else:
+            return 'as_miscl'
     else:
-        return 'prepro'
+        if not misclassified:
+            return 'prepro'
+        else:
+            return 'miscl'

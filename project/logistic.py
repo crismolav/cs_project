@@ -1,5 +1,6 @@
 from helpers import load_csv_info, load_text, split_reviews,\
-    get_star_distribution, get_classification_group_for_star_rating, print_metrics
+    get_star_distribution, get_classification_group_for_star_rating,\
+    print_metrics, get_file_name_from_sys_arg
 import baseline as bl
 import preprocess as prepro
 import spacy
@@ -14,12 +15,23 @@ import numpy as np
 from pdb import set_trace
 
 def find_incorrectly_classified_review(Y_true, Y_pred, review_list):
-    return
     different = []
-    review_list = []
-    for ind, review in enumerate(review_list):
+    output_file_name =prepro.get_cache_file_name(
+        file_name=file_name, max_review=max_review, as_sentence=True, misclassified=True)
+    g = open(output_file_name, 'w')
 
-        set_trace()
+    for ind, review in enumerate(review_list):
+        if Y_true[ind] != Y_pred[ind]:
+            review_dict = {
+                'Y_true': str(Y_true[ind]),
+                'Y_pred': str(Y_pred[ind]),
+                'pre_processed_review':review
+            }
+            different.append(review)
+
+            g.write(json.dumps(review_dict) + '\n')
+
+    g.close()
 
 def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
     cv = CountVectorizer(
@@ -32,9 +44,14 @@ def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
 
     cv.fit(review_list)
     X = cv.transform(review_list)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, Y, train_size=2/3
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     #     X, Y, train_size=2/3
+    #     # )
+    rev_train, rev_test, y_train, y_test = train_test_split(
+        review_list, Y, train_size=2 / 3
     )
+    X_train = cv.transform(rev_train)
+    X_test = cv.transform(rev_test)
     C_list = [0.01, 0.05, 0.25, 0.5, 1]
     # C_list = [0.01, 0.05]
     # for c in C_list:
@@ -47,18 +64,21 @@ def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
     Y_pred = lr.predict(X_test)
     print_metrics(Y_true=y_test, Y_pred=Y_pred)
     print_best_positive_and_negative(cv=cv, lr=lr)
-    find_incorrectly_classified_review(Y_true=y_test, Y_pred=Y_pred, review_list=review_list)
+    find_incorrectly_classified_review(Y_true=y_test, Y_pred=Y_pred, review_list=rev_test)
 
 def get_reviews_as_list_from_cache(file_name, max_review, negative_reviews_as_positive):
     cache_file_name = prepro.get_cache_file_name(
-        file_name=file_name, max_review=max_review, as_sentence=True)
+        file_name=file_name, max_review=max_review, as_sentence=True, misclassified=False)
     review_list = []
     Y = []
     with open(cache_file_name) as f:
         for line in f:
             pp_review_dict = json.loads(line)
-            star_rating = pp_review_dict['star_rating']
-            pre_processed_review = pp_review_dict['pre_processed_review']
+            try:
+                star_rating = pp_review_dict['star_rating']
+                pre_processed_review = pp_review_dict['pre_processed_review']
+            except:
+                set_trace()
             # IGNORE NEUTRAL RATINGS
             if int(star_rating) == 3:
                 continue
@@ -175,28 +195,19 @@ def experiment():
 
     print(X.shape)
 
-def get_file_name_from_sys_arg(sys_argv):
-    if sys_argv[1] == 'books':
-        file_name = "Books_50000.tsv"
-    elif sys_argv[1] == 'video_games':
-        file_name = "Video_Games_50000.tsv"
-    elif sys_argv[1] == 'beauty':
-        file_name = "Beauty_50000.tsv"
-    else:
-        raise Exception("unknown file tipe")
-    return file_name
 
 if __name__=="__main__":
     # LOAD THE REVIEWS AND THE CORRESPONDING RATING
     file_name = get_file_name_from_sys_arg(sys_argv=sys.argv)
     star_rating_list, review_list = load_csv_info(file_name)
-    #Get distribution
-    get_star_distribution(star_rating_list)
     nlp = spacy.load("en_core_web_sm")
     max_review = int(sys.argv[2]) if len(sys.argv) > 2 else None
     in_parallel = True if (len(sys.argv) > 3 and sys.argv[3] == "parallel") else False
     logreg = True
+    #Get distribution
+    get_star_distribution(star_rating_list=star_rating_list, max_review=max_review)
     # PRE PROCESS REVIEWS
+
     prepro.pre_process_all_reviews(
         file_name=file_name, max_review=max_review, nlp=nlp, as_sentence=True,
         in_parallel=in_parallel)

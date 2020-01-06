@@ -1,7 +1,8 @@
 from nltk.corpus import wordnet as wn
 from helpers import load_csv_info, load_text, split_reviews,\
     get_star_distribution, get_classification_group_for_star_rating,\
-    print_metrics, transform_pos_to_wordnet_notation
+    print_metrics, transform_pos_to_wordnet_notation,\
+    get_file_name_from_sys_arg
 import preprocess as prepro
 from pdb import set_trace
 from nltk.corpus import sentiwordnet as swn
@@ -20,6 +21,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import spacy
 import json
+import sys
 
 
 
@@ -259,18 +261,21 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     fig.tight_layout()
     plt.show()
 
+
 if __name__=="__main__":
     # LOAD THE REVIEWS AND THE CORRESPONDING RATING
-    file_name1 = "10000reviews.txt"
-    file_name2 = "videogames_9999.tsv"
-    star_rating_list, review_list = load_csv_info(file_name1)
-    #Get distribution
-    get_star_distribution(star_rating_list)
+    file_name = get_file_name_from_sys_arg(sys_argv=sys.argv)
+    star_rating_list, review_list = load_csv_info(file_name)
     nlp = spacy.load("en_core_web_sm")
-    max_review = 11
+    max_review = int(sys.argv[2]) if len(sys.argv) > 2 else None
+    in_parallel = True if (len(sys.argv) > 3 and sys.argv[3] == "parallel") else False
+    #Get distribution
+    get_star_distribution(star_rating_list=star_rating_list, max_review=max_review)
     # PRE PROCESS REVIEWS
+
     prepro.pre_process_all_reviews(
-        file_name=file_name1, max_review=max_review, nlp=nlp)
+        file_name=file_name, max_review=max_review, nlp=nlp, as_sentence=False,
+        in_parallel=in_parallel)
     # PROCESS REVIEWs
     threshold_list = [1, 1.1, 1.2, 1.3, 1.4 , 1.5 , 1.6, 1.7, 1.8]
     for threshold in threshold_list:
