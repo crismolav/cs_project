@@ -12,7 +12,12 @@ import numpy as np
 import json
 import os.path
 from helpers import load_csv_info, transform_pos_to_wordnet_notation
+from os import listdir
+from os.path import isfile, join
+from shutil import copyfile
+
 from multiprocessing import Pool
+
 
 # -*- coding: utf-8 -*-
 """
@@ -97,12 +102,21 @@ def lemmatize_and_autocorrect_words(tagset):
     lemmatizer = WordNetLemmatizer()
     for word_tuple in tagset:
         pos_simple = transform_pos_to_wordnet_notation(pos = word_tuple[1])
-        autocorrected = spell(word_tuple[0])
+
+        if '_not' in word_tuple[0]:
+            original_word= word_tuple[0].split('_')[0]
+            tail = '_not'
+        else:
+            original_word = word_tuple[0]
+            tail = ''
+        autocorrected = spell(original_word)
         if pos_simple not in ['']:
             lemma = lemmatizer.lemmatize(autocorrected, pos_simple).lower()
         else:
             lemma = autocorrected
-        new_tuple = (lemma, word_tuple[1])
+
+        final_word = lemma+tail
+        new_tuple = (final_word, word_tuple[1])
         lemmatized_list.append(new_tuple)
 
     return lemmatized_list
@@ -239,18 +253,56 @@ def pre_process_all_reviews(file_name, max_review, nlp, as_sentence=False, in_pa
         return
     #pre process reviews
     else:
+        next_best_cache = look_for_next_best_cache(file_name, output_file_name, max_review)
+        min_review = None
+
+        if next_best_cache is not None:
+            print("CACHE next best: %s" % next_best_cache)
+            copyfile(next_best_cache, output_file_name)
+            min_review = get_cache_review_number(cache_file=next_best_cache)
+
         print("CACHE miss: %s"%output_file_name)
+
         pre_process_all_reviews_do_work(
             file_name=file_name, max_review=max_review, nlp=nlp,
-            as_sentence=as_sentence, in_parallel=in_parallel)
+            as_sentence=as_sentence, in_parallel=in_parallel,
+            min_review=min_review)
 
-def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence, in_parallel=False):
+
+def look_for_next_best_cache(file_name, output_file_name, max_review):
+    subfolder = get_subfolder_name(file_name)
+    folder = 'prepro_cache/%s'%(subfolder)
+    onlyfiles = [f for f in listdir(folder) if isfile(join(folder, f))]
+    next_best_cache = get_best_files(
+        onlyfiles=onlyfiles, subfolder=subfolder, max_review=max_review)
+    if next_best_cache is None:
+        return None
+    return folder+'/'+next_best_cache
+
+def get_best_files(onlyfiles, subfolder, max_review):
+    best_file = None
+    max_num_reviews = 0
+
+    for cache_file in onlyfiles:
+        if cache_file.startswith(subfolder):
+            review_number = get_cache_review_number(cache_file)
+            if review_number>max_num_reviews and review_number<max_review:
+                best_file = cache_file
+                max_num_reviews = review_number
+
+    return best_file
+
+def get_cache_review_number(cache_file):
+    return int(cache_file.split("_")[-1].split(".")[0])
+
+def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence, in_parallel=False, min_review=None):
     output_file_name = get_cache_file_name(
         file_name=file_name, max_review=max_review, as_sentence=as_sentence)
 
     star_rating_list, review_list = load_csv_info(
-        fname=file_name, max_review=max_review)
-    f = open(output_file_name, 'w')
+        fname=file_name, max_review=max_review, min_review=min_review)
+    write_or_append = 'a' if min_review is not None else 'w'
+    f = open(output_file_name, write_or_append)
 
     if not in_parallel:
         for ind, review in enumerate(review_list):
@@ -265,13 +317,14 @@ def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence, in_
     else:
         print("calculating in parallel")
         agents = 10
-        chunksize = int(len(review_list)/agents)
+        # chunksize = int(len(review_list)/agents)
         dataset = zip(review_list,
                       [nlp]*len(review_list),
                       [as_sentence]*len(review_list))
 
         with Pool(processes=agents) as pool:
-            results = pool.starmap(pre_process, dataset, chunksize)
+            results = pool.starmap(pre_process, dataset)
+
         for ind, result in enumerate(results):
             star_rating = star_rating_list[ind]
             review_dict = {
@@ -288,7 +341,19 @@ def get_cache_file_name(file_name, max_review=None, as_sentence=False):
     subfolder = file_name_final
     if max_review is not None:
         file_name_final += '_%s' % str(max_review)
+    file_extension = get_file_extension(as_sentence=as_sentence)
+
+    return 'prepro_cache/%s/%s.%s' % (subfolder, file_name_final, file_extension)
+
+def get_subfolder_name(file_name):
+    file_name_final = file_name.replace(".txt", "")
+    file_name_final = file_name_final.replace(".tsv", "")
+    file_name_final = '_'.join(file_name_final.split("_")[:-1])
+    subfolder = file_name_final
+    return subfolder
+
+def get_file_extension(as_sentence):
     if as_sentence:
-        return 'prepro_cache/%s/%s.as.prepro' % (subfolder, file_name_final)
+        return 'as.prepro'
     else:
-        return 'prepro_cache/%s/%s.prepro' % (subfolder, file_name_final)
+        return 'prepro'

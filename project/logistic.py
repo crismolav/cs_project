@@ -5,41 +5,26 @@ import preprocess as prepro
 import spacy
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import json
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics import precision_score, recall_score,\
     accuracy_score, f1_score, confusion_matrix, roc_auc_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_predict
 import sys
+import numpy as np
 from pdb import set_trace
 
-def process_one_review_lr(
-        star_rating, pre_processed_review, ignored_non_english,
-        Y_true, Y_pred, index=None, negative_reviews_as_positive=False, threshold=1.3):
-    # IGNORE NEUTRAL RATINGS
-    if int(star_rating) == 3:
-        return
-    # IGNORE OTHER LANGUAGES
-    if pre_processed_review == []:
-        ignored_non_english[0] += 1
-        return
+def find_incorrectly_classified_review(Y_true, Y_pred, review_list):
+    return
+    different = []
+    review_list = []
+    for ind, review in enumerate(review_list):
 
-    original_classification = get_classification_group_for_star_rating(
-        star_rating=star_rating,
-        negative_reviews_as_positive=negative_reviews_as_positive)
+        set_trace()
 
-    baseline_classification, final_score = get_baseline_classification(
-        review=pre_processed_review,
-        negative_reviews_as_positive=negative_reviews_as_positive,
-        threshold=threshold, index=index)
-
-    Y_true.append(original_classification)
-    Y_pred.append(baseline_classification)
-    # if original_classification == 0 and baseline_classification == 1:
-    #     set_trace()
 def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
     cv = CountVectorizer(
         binary=True,
-        ngram_range=(1,1),
+        ngram_range=(1,2),
         stop_words='english'
     )
 
@@ -47,17 +32,22 @@ def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
 
     cv.fit(review_list)
     X = cv.transform(review_list)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, Y, train_size=0.75
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, Y, train_size=2/3
     )
-    # C_list = [0.01, 0.05, 0.25, 0.5, 1]
-    C_list = [0.01, 0.05]
-    for c in C_list:
-        lr = LogisticRegression(C=c, class_weight='balanced')
-        lr.fit(X_train, y_train)
-        print("*************")
-        print_metrics(Y_true=y_val, Y_pred=lr.predict(X_val))
-        print_best_positive_and_negative(cv=cv, lr=lr)
+    C_list = [0.01, 0.05, 0.25, 0.5, 1]
+    # C_list = [0.01, 0.05]
+    # for c in C_list:
+    lr = LogisticRegressionCV(Cs=C_list, cv=10, class_weight='balanced')
+    lr.fit(X_train, y_train)
+    # lr.fit(X_train, y_train)
+    # y_pred = cross_val_predict(lr, X, Y, cv=5)
+    print("*************")
+    # print_metrics(Y_true=y_val, Y_pred=lr.predicst(X_val))
+    Y_pred = lr.predict(X_test)
+    print_metrics(Y_true=y_test, Y_pred=Y_pred)
+    print_best_positive_and_negative(cv=cv, lr=lr)
+    find_incorrectly_classified_review(Y_true=y_test, Y_pred=Y_pred, review_list=review_list)
 
 def get_reviews_as_list_from_cache(file_name, max_review, negative_reviews_as_positive):
     cache_file_name = prepro.get_cache_file_name(
@@ -94,12 +84,12 @@ def print_best_positive_and_negative(cv, lr):
     for best_positive in sorted(
             feature_to_coef.items(),
             key=lambda x: x[1],
-            reverse=True)[:20]:
+            reverse=True)[:30]:
         print(best_positive)
     print("Negative")
     for best_negative in sorted(
             feature_to_coef.items(),
-            key=lambda x: x[1])[:20]:
+            key=lambda x: x[1])[:30]:
         print(best_negative)
     print("*************")
 # def fit_logreg2(file_name, max_review, negative_reviews_as_positive=False):
@@ -205,7 +195,6 @@ if __name__=="__main__":
     nlp = spacy.load("en_core_web_sm")
     max_review = int(sys.argv[2]) if len(sys.argv) > 2 else None
     in_parallel = True if (len(sys.argv) > 3 and sys.argv[3] == "parallel") else False
-
     logreg = True
     # PRE PROCESS REVIEWS
     prepro.pre_process_all_reviews(

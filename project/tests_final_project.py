@@ -168,34 +168,35 @@ class FinalTests(unittest.TestCase):
         Y_true = []
         Y_pred = []
         ignored_non_english = [0]
-        review = "CONTAINS SPOILERS!<br /><br />First off, when I have been a HUGE Sookie fan." \
-                 "  I loved these books and have read them over and over." \
-                 "  When I just picked up Deadlocked, I was like, what the heck!!!" \
-                 "  This isn't nearly long enough!<br /><br />" \
-                 "I felt like the book was filled with fluff and the plot line was thin." \
-                 "  So much time was spent on Sookie doing chores. " \
-                 " Perhaps the author wanted us to see her doing every day things?<br /><br" \
-                 " />Like other reviewers said, if you like Eric, you won't like this book. " \
-                 " I don't understand what happened to his character so fast. " \
-                 " The majority of the series was built of the Sookie/Eric tension and then they got to a great relationship. " \
-                 " I often found Sookie annoying, but Eric's character kept yanking me back with his humor and whit. " \
-                 " This book makes him look terrible." \
-                 "  I feel let down in that so many years were invested in getting to see him become a better person and love Sookie, " \
-                 "just to have them appearing to go their separate ways.<br /><br />There was too much Bill in this book. " \
-                 " We went books and books without Bill, and now he was in this book so much.<br /><br />" \
-                 "I felt from the very beginning Sookie would end up with Sam." \
-                 "  I really didn't want this to happen.  " \
-                 "Couldn't the girl just have a close guy friend?" \
-                 "  I was hoping she'd use the cluviel dor to make Eric human. " \
-                 " Perhaps he wouldn't have wanted it, but if she was being such a baby about it," \
-                 " why didn't she at least talk to him about it?<br /><br />Anyway," \
-                 " I felt the author was really trying to wrap things up in this book," \
-                 " getting ready for the last one next year." \
-                 "  I thought things were too rushed and I don't like where things are going." \
-                 "  The Fae left too quickly.. Anyways, this is my opinion," \
-                 " I hope the next book is longer (without the fluff) and leaves us satisfied.." \
-                 " but I'm thinking I'm going to be disappointed with that one as well."
-        pre_processed_review = pp.pre_process(text=review, nlp=nlp)
+        # review = "CONTAINS SPOILERS!<br /><br />First off, when I have been a HUGE Sookie fan." \
+        #          "  I loved these books and have read them over and over." \
+        #          "  When I just picked up Deadlocked, I was like, what the heck!!!" \
+        #          "  This isn't nearly long enough!<br /><br />" \
+        #          "I felt like the book was filled with fluff and the plot line was thin." \
+        #          "  So much time was spent on Sookie doing chores. " \
+        #          " Perhaps the author wanted us to see her doing every day things?<br /><br" \
+        #          " />Like other reviewers said, if you like Eric, you won't like this book. " \
+        #          " I don't understand what happened to his character so fast. " \
+        #          " The majority of the series was built of the Sookie/Eric tension and then they got to a great relationship. " \
+        #          " I often found Sookie annoying, but Eric's character kept yanking me back with his humor and whit. " \
+        #          " This book makes him look terrible." \
+        #          "  I feel let down in that so many years were invested in getting to see him become a better person and love Sookie, " \
+        #          "just to have them appearing to go their separate ways.<br /><br />There was too much Bill in this book. " \
+        #          " We went books and books without Bill, and now he was in this book so much.<br /><br />" \
+        #          "I felt from the very beginning Sookie would end up with Sam." \
+        #          "  I really didn't want this to happen.  " \
+        #          "Couldn't the girl just have a close guy friend?" \
+        #          "  I was hoping she'd use the cluviel dor to make Eric human. " \
+        #          " Perhaps he wouldn't have wanted it, but if she was being such a baby about it," \
+        #          " why didn't she at least talk to him about it?<br /><br />Anyway," \
+        #          " I felt the author was really trying to wrap things up in this book," \
+        #          " getting ready for the last one next year." \
+        #          "  I thought things were too rushed and I don't like where things are going." \
+        #          "  The Fae left too quickly.. Anyways, this is my opinion," \
+        #          " I hope the next book is longer (without the fluff) and leaves us satisfied.." \
+        #          " but I'm thinking I'm going to be disappointed with that one as well."
+        review = 'It is not great'
+        pre_processed_review = pp.pre_process(text=review, nlp=nlp, as_sentence=False)
 
         bl.process_one_review_pp(
             star_rating=star_rating, pre_processed_review=pre_processed_review,
@@ -218,6 +219,14 @@ class FinalTests(unittest.TestCase):
 
         result = pp.lemmatize_and_autocorrect_words(tagset=tagset)
         expected = [('disappoint', 'VERB'), ('book', 'NOUN')]
+
+        self.assertEqual(expected, result)
+
+    def test_lemmatize_words__general_negated_verb(self):
+        tagset = [('disappointed_not', 'VERB'), ('book', 'NOUN')]
+
+        result = pp.lemmatize_and_autocorrect_words(tagset=tagset)
+        expected = [('disappoint_not', 'VERB'), ('book', 'NOUN')]
 
         self.assertEqual(expected, result)
 
