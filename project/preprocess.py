@@ -11,7 +11,7 @@ from pdb import set_trace
 import numpy as np
 import json
 import os.path
-from helpers import load_csv_info, transform_pos_to_wordnet_notation
+from helpers import load_csv_info, transform_pos_to_wordnet_notation, get_classification_group_for_star_rating
 from os import listdir
 from os.path import isfile, join
 from shutil import copyfile
@@ -299,7 +299,7 @@ def get_best_files(onlyfiles, subfolder, max_review, as_sentence=False, misclass
     return best_file
 
 def get_cache_review_number(cache_file):
-    return int(cache_file.split("_")[-1].split(".")[0])
+    return int(cache_file.split(".")[0].split("_")[-1])
 
 def pre_process_all_reviews_do_work(file_name, max_review, nlp, as_sentence, in_parallel=False, min_review=None):
     output_file_name = get_cache_file_name(
@@ -371,3 +371,31 @@ def get_file_extension(as_sentence, misclassified):
             return 'prepro'
         else:
             return 'miscl'
+
+def get_reviews_as_list_from_cache(file_name, max_review, as_sentence, negative_reviews_as_positive):
+    cache_file_name = get_cache_file_name(
+        file_name=file_name, max_review=max_review, as_sentence=as_sentence, misclassified=False)
+    review_list = []
+    Y = []
+    with open(cache_file_name) as f:
+        for line in f:
+            pp_review_dict = json.loads(line)
+            try:
+                star_rating = pp_review_dict['star_rating']
+                pre_processed_review = pp_review_dict['pre_processed_review']
+            except:
+                set_trace()
+            # IGNORE NEUTRAL RATINGS
+            if int(star_rating) == 3:
+                continue
+            # TODO: check this
+            # IGNORE OTHER LANGUAGES
+            if pre_processed_review in ['', []]:
+                continue
+            classification = get_classification_group_for_star_rating(
+                star_rating=star_rating,
+                negative_reviews_as_positive=negative_reviews_as_positive)
+            review_list.append(pre_processed_review)
+            Y.append(classification)
+
+    return Y, review_list

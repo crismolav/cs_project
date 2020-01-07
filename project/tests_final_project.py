@@ -91,7 +91,7 @@ class FinalTests(unittest.TestCase):
 
         result = bl.get_sentiment_score_word_pos_tuple(
             word_pos_tuple=word_pos_tuple)
-        expected = (0.1875, 0.0)
+        expected = (0.375, 0.0)
 
         self.assertEqual(expected, result)
 
@@ -100,7 +100,7 @@ class FinalTests(unittest.TestCase):
 
         result = bl.get_sentiment_score_word_pos_tuple(
             word_pos_tuple=word_pos_tuple)
-        expected = (0.0, 0.1875)
+        expected = (0.0, 0.375)
 
         self.assertEqual(expected, result)
 
@@ -114,7 +114,7 @@ class FinalTests(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_process_one_review__negative(self):
-        star_rating = 2
+        original_classification = 0
         Y_true = []
         Y_pred = []
         ignored_non_english = [0]
@@ -130,7 +130,7 @@ class FinalTests(unittest.TestCase):
         pre_processed_review = pp.pre_process(text=review, nlp=nlp)
 
         bl.process_one_review_pp(
-            star_rating=star_rating, pre_processed_review=pre_processed_review,
+            original_classification=original_classification, pre_processed_review=pre_processed_review,
             ignored_non_english=ignored_non_english,
             Y_true=Y_true, Y_pred=Y_pred)
         expected = [0] , [0]
@@ -145,7 +145,7 @@ class FinalTests(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_process_one_review__negative_hard(self):
-        star_rating = 2
+        original_classification = 0
         Y_true = []
         Y_pred = []
         ignored_non_english = [0]
@@ -156,15 +156,15 @@ class FinalTests(unittest.TestCase):
                  ' moreinstructions on the actualy making the quilat'
         pre_processed_review = pp.pre_process(text=review, nlp=nlp)
         bl.process_one_review_pp(
-            star_rating=star_rating, pre_processed_review=pre_processed_review,
+            original_classification=original_classification, pre_processed_review=pre_processed_review,
             ignored_non_english=ignored_non_english,
             Y_true=Y_true, Y_pred=Y_pred)
-        expected = [0] , [0]
+        expected = [0] , [1]
 
         self.assertEqual(expected, (Y_true, Y_pred))
 
     def test_process_one_review__testing(self):
-        star_rating = 2
+        original_classification = 0
         Y_true = []
         Y_pred = []
         ignored_non_english = [0]
@@ -199,7 +199,7 @@ class FinalTests(unittest.TestCase):
         pre_processed_review = pp.pre_process(text=review, nlp=nlp, as_sentence=False)
 
         bl.process_one_review_pp(
-            star_rating=star_rating, pre_processed_review=pre_processed_review,
+            original_classification=original_classification, pre_processed_review=pre_processed_review,
             ignored_non_english=ignored_non_english,
             Y_true=Y_true, Y_pred=Y_pred)
         expected = [0], [0]
@@ -229,6 +229,29 @@ class FinalTests(unittest.TestCase):
         expected = [('disappoint_not', 'VERB'), ('book', 'NOUN')]
 
         self.assertEqual(expected, result)
+
+    def test_get_baseline_classification__negative(self):
+        review = [['get', 'VERB', 'pos'], ['product', 'NOUN', 'pos'],
+                  ['time', 'NOUN', 'pos'], ['use', 'ADJ', 'neg'],
+                  ['month', 'NOUN', 'pos'], ['open', 'VERB', 'pos'],
+                  ['used', 'ADJ', 'pos'], ['item', 'NOUN', 'pos'],
+                  ['even', 'ADV', 'pos'], ['hairs', 'VERB', 'pos'],
+                  ['blade', 'NOUN', 'pos'], ['importantly', 'ADV', 'pos'],
+                  ['item', 'NOUN', 'pos'], ['defective', 'ADJ', 'pos'],
+                  ['one', 'NUM', 'pos'], ['month', 'NOUN', 'pos'],
+                  ['old', 'ADJ', 'pos'], ['since', 'ADP', 'pos'],
+                  ['receive', 'VERB', 'pos'], ['package', 'NOUN', 'pos'],
+                  ['could', 'VERB', 'pos'], ['even', 'ADV', 'pos'],
+                  ['return', 'VERB', 'neg'], ['complete', 'ADJ', 'pos'],
+                  ['wastage', 'NOUN', 'pos'], ['money', 'NOUN', 'pos']]
+
+        result = bl. get_baseline_classification(
+            review=review,
+            negative_reviews_as_positive=False,
+            threshold=1.6, index=None)
+        expected = 0
+
+        self.assertEqual(expected, result[0])
 
 if __name__ == '__main__':
     unittest.main()

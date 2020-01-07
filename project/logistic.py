@@ -40,7 +40,9 @@ def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
         stop_words='english'
     )
 
-    Y, review_list = get_reviews_as_list_from_cache(file_name, max_review, negative_reviews_as_positive)
+    Y, review_list = prepro.get_reviews_as_list_from_cache(
+        file_name=file_name, max_review=max_review, as_sentence=True,
+        negative_reviews_as_positive=negative_reviews_as_positive)
 
     cv.fit(review_list)
     X = cv.transform(review_list)
@@ -48,7 +50,7 @@ def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
     #     #     X, Y, train_size=2/3
     #     # )
     rev_train, rev_test, y_train, y_test = train_test_split(
-        review_list, Y, train_size=2 / 3
+        review_list, Y, train_size=2/3
     )
     X_train = cv.transform(rev_train)
     X_test = cv.transform(rev_test)
@@ -65,34 +67,6 @@ def fit_logreg(file_name, max_review, negative_reviews_as_positive=False):
     print_metrics(Y_true=y_test, Y_pred=Y_pred)
     print_best_positive_and_negative(cv=cv, lr=lr)
     find_incorrectly_classified_review(Y_true=y_test, Y_pred=Y_pred, review_list=rev_test)
-
-def get_reviews_as_list_from_cache(file_name, max_review, negative_reviews_as_positive):
-    cache_file_name = prepro.get_cache_file_name(
-        file_name=file_name, max_review=max_review, as_sentence=True, misclassified=False)
-    review_list = []
-    Y = []
-    with open(cache_file_name) as f:
-        for line in f:
-            pp_review_dict = json.loads(line)
-            try:
-                star_rating = pp_review_dict['star_rating']
-                pre_processed_review = pp_review_dict['pre_processed_review']
-            except:
-                set_trace()
-            # IGNORE NEUTRAL RATINGS
-            if int(star_rating) == 3:
-                continue
-            # TODO: check this
-            # IGNORE OTHER LANGUAGES
-            if pre_processed_review in ['', []]:
-                continue
-            classification = get_classification_group_for_star_rating(
-                star_rating=star_rating,
-                negative_reviews_as_positive=negative_reviews_as_positive)
-            review_list.append(pre_processed_review)
-            Y.append(classification)
-
-    return Y, review_list
 
 def print_best_positive_and_negative(cv, lr):
     feature_to_coef = {

@@ -127,6 +127,11 @@ def get_file_name_from_sys_arg(sys_argv):
         file_name = "Video_Games_50000.tsv"
     elif sys_argv[1] == 'beauty':
         file_name = "Beauty_50000.tsv"
+    elif sys_argv[1] == 'mobile_apps':
+        file_name = "Mobile_Apps_50000.tsv"
+    elif sys_argv[1] == 'toys':
+        file_name = "Toys_50000.tsv"
     else:
         raise Exception("unknown file tipe")
     return file_name
+
